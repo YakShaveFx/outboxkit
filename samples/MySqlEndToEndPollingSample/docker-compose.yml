@@ -1,0 +1,110 @@
+services:
+  traefik:
+    image: "docker.io/traefik:v3"
+    container_name: traefik
+    ports:
+      - "8080:8080"
+      - "6001:6001"
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"      
+      - "--providers.docker.exposedbydefault=false"
+      - "--entryPoints.producer.address=:6001"
+      - "--log.level=DEBUG"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+
+  producer:
+    build:
+      context: ../../
+      dockerfile: ./samples/MySqlEndToEndPollingSample/Producer/Dockerfile
+    image: mysqlendtoendpollingsample/producer:latest
+    # ports:
+    #   - "6001:8080"
+    environment:
+      ConnectionStrings__Default: "server=mysql;port=3306;database=outboxkit_end_to_end_sample;user=user;password=pass;Maximum Pool Size=50;"
+      OpenTelemetrySettings__Endpoint: "http://lgtm:4317"
+      OTEL_METRIC_EXPORT_INTERVAL: 15000 # 15 seconds
+      RabbitMq__Host: "rabbitmq"
+      RabbitMq__Port: 5672
+      RabbitMq__Exchange: "outboxkit_end_to_end_sample"
+    depends_on:
+      - mysql
+      - rabbitmq
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.producer.rule=Host(`localhost`)"
+      - "traefik.http.routers.producer.entrypoints=producer"
+      - "traefik.http.services.producer.loadbalancer.server.port=8080"
+    deploy:
+      replicas: 3
+      resources:
+        reservations:
+            memory: 128M
+            cpus: 0.1
+        limits:
+          memory: 256M
+          cpus: 1.0
+
+  consumer:
+    build:
+      context: ../../
+      dockerfile: ./samples/MySqlEndToEndPollingSample/Consumer/Dockerfile
+    image: mysqlendtoendpollingsample/consumer:latest
+    ports:
+      - "6002:8080"
+    environment:
+      OpenTelemetrySettings__Endpoint: "http://lgtm:4317"
+      OTEL_METRIC_EXPORT_INTERVAL: 15000 # 15 seconds
+      RabbitMq__Host: "rabbitmq"
+      RabbitMq__Port: 5672
+      RabbitMq__Exchange: "outboxkit_end_to_end_sample"
+      RabbitMq__Queue: "sample_events"
+    depends_on:
+      - rabbitmq
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          memory: 64M
+          cpus: 0.1
+        limits:
+          memory: 128M
+          cpus: 0.25
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    hostname: rabbitmq
+    container_name: rabbitmq
+    ports:
+      - "5672:5672" # rabbit itself
+      - "15672:15672" # management ui
+  
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_USER: user
+      MYSQL_PASSWORD: pass
+      MYSQL_DATABASE: outboxkit_end_to_end_sample
+    deploy:
+      resources:
+        reservations:
+          memory: 256M
+          cpus: 0.5
+        limits:
+          memory: 768M
+          cpus: 2.5
+  
+  lgtm:
+    image: grafana/otel-lgtm
+    hostname: lgtm
+    container_name: lgtm
+    ports:
+      - "3000:3000" # ui
+      - "4317:4317" # otlp gRPC
+      - "4318:4318" # otlp HTTP
