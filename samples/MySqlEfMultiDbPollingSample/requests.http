@@ -1,0 +1,8 @@
+POST http://localhost:8080/publish/10
+X-Tenant: tenant-one
+
+###
+
+POST http://localhost:8080/publish/10
+X-Tenant: tenant-two
+
