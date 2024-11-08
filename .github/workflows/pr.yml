@@ -5,9 +5,7 @@ on:
     branches:
       - main
 jobs:
-  build:
-    runs-on: ubuntu-latest
-
+  build-and-test:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -17,11 +15,5 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      - name: dotnet restore
-        run: dotnet restore
-
-      - name: dotnet build
-        run: dotnet build --no-restore
-
-      - name: dotnet test
-        run: dotnet test --no-restore --no-build
+      - name: Build & Test
+        run: ./build/build.sh --target=BuildAndTest
