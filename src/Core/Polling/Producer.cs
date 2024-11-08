@@ -4,6 +4,7 @@ using YakShaveFx.OutboxKit.Core.OpenTelemetry;
 
 namespace YakShaveFx.OutboxKit.Core.Polling;
 
+// yes, this interface was created just to allow for using a test double, was the simpler thing I could come up with
 internal interface IProducer
 {
     Task ProducePendingAsync(string key, CancellationToken ct);

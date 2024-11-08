@@ -8,6 +8,7 @@ using OpenTelemetry.Trace;
 using YakShaveFx.OutboxKit.Core;
 using YakShaveFx.OutboxKit.Core.OpenTelemetry;
 using YakShaveFx.OutboxKit.MySql.Polling;
+using static YakShaveFx.OutboxKit.Core.OpenTelemetry.TraceContextHelpers;
 
 const string connectionString =
     "server=localhost;port=3306;database=outboxkit_ef_mysql_sample;user=root;password=root;";
@@ -33,7 +34,7 @@ builder.Services
                     // this is optional, only needed if not using the default table structure
                     .WithTable(t => t
                         .WithName("OutboxMessages")
-                        .WithColumns(["Id", "Type", "Payload", "CreatedAt", "ObservabilityContext"])
+                        .WithColumns(["Id", "Type", "Payload", "CreatedAt", "TraceContext"])
                         .WithIdColumn("Id")
                         .WithOrderByColumn("Id")
                         .WithIdGetter(m => ((OutboxMessage)m).Id)
@@ -43,7 +44,7 @@ builder.Services
                             Type = r.GetString(1),
                             Payload = r.GetFieldValue<byte[]>(2),
                             CreatedAt = r.GetDateTime(3),
-                            ObservabilityContext = r.IsDBNull(4) ? null : r.GetFieldValue<byte[]>(4)
+                            TraceContext = r.IsDBNull(4) ? null : r.GetFieldValue<byte[]>(4)
                         }))))
     .AddSingleton(new Faker())
     .AddSingleton(TimeProvider.System);
@@ -75,7 +76,7 @@ app.MapPost("/publish/{count}", async (int count, Faker faker, SampleContext db)
             Type = "sample",
             Payload = Encoding.UTF8.GetBytes(faker.Hacker.Verb()),
             CreatedAt = DateTime.UtcNow,
-            ObservabilityContext = ObservabilityContextHelpers.GetCurrentObservabilityContext()
+            TraceContext = ExtractCurrentTraceContext()
         });
 
     await db.OutboxMessages.AddRangeAsync(messages);

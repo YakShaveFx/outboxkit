@@ -36,22 +36,34 @@ internal sealed class KeyedListener(IEnumerable<string> keys) : IKeyedOutboxList
             : throw new ArgumentException($"Key {key} not found to wait for outbox messages", nameof(key));
 }
 
-public interface IOutboxListener
+internal interface IOutboxListener
 {
     Task WaitForMessagesAsync(CancellationToken ct);
 }
 
-public interface IOutboxTrigger
-{
-    void OnNewMessages();
-}
-
-public interface IKeyedOutboxListener
+internal interface IKeyedOutboxListener
 {
     Task WaitForMessagesAsync(string key, CancellationToken ct);
 }
 
+/// <summary>
+/// Allows triggering the check for new outbox messages, without waiting for the polling interval.
+/// </summary>
+public interface IOutboxTrigger
+{
+    /// <summary>
+    /// Triggers the check for new outbox messages, without waiting for the polling interval.
+    /// </summary>
+    void OnNewMessages();
+}
+
+/// <summary>
+/// Allows triggering the check for new outbox messages for a specific key, without waiting for the polling interval.
+/// </summary>
 public interface IKeyedOutboxTrigger
 {
+    /// <summary>
+    /// Triggers the check for new outbox messages for a specific key, without waiting for the polling interval.
+    /// </summary>
     void OnNewMessages(string key);
 }

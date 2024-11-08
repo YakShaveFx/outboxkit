@@ -20,7 +20,7 @@ public sealed class OutboxMessage : IMessage
     public required string Type { get; init; }
     public required byte[] Payload { get; init; }
     public DateTime CreatedAt { get; init; }
-    public byte[]? ObservabilityContext { get; init; }
+    public byte[]? TraceContext { get; init; }
 }
 
 public sealed class OutboxMessageConfiguration : IEntityTypeConfiguration<OutboxMessage>
@@ -32,7 +32,7 @@ public sealed class OutboxMessageConfiguration : IEntityTypeConfiguration<Outbox
         builder.Property(e => e.Type).HasMaxLength(128);
         builder.Property(e => e.Payload);
         builder.Property(e => e.CreatedAt);
-        builder.Property(e => e.ObservabilityContext);
+        builder.Property(e => e.TraceContext);
     }
 }
 

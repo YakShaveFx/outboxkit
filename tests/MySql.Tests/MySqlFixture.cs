@@ -135,7 +135,7 @@ file static class InitializationExtensions
                  type                  varchar(128) not null,
                  payload               longblob     not null,
                  created_at            datetime(6)  not null,
-                 observability_context longblob     null
+                 trace_context longblob     null
              );
              """, connection);
         await command.ExecuteNonQueryAsync();
@@ -150,12 +150,12 @@ file static class InitializationExtensions
             Type = "some-type",
             Payload = JsonSerializer.SerializeToUtf8Bytes($"payload{i}"),
             CreatedAt = DateTimeOffset.UtcNow,
-            ObservabilityContext = null
+            TraceContext = null
         });
 
         await connection.ExecuteAsync(
             // lang=mysql
-            $"INSERT INTO {databaseName}.outbox_messages (type, payload, created_at, observability_context) VALUES (@Type, @Payload, @CreatedAt, @ObservabilityContext);",
+            $"INSERT INTO {databaseName}.outbox_messages (type, payload, created_at, trace_context) VALUES (@Type, @Payload, @CreatedAt, @TraceContext);",
             messages);
     }
 }

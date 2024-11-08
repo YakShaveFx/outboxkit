@@ -13,13 +13,13 @@ internal sealed class FakeBatchProducer(ILogger<FakeBatchProducer> logger) : IBa
         foreach (var message in x)
         {
             logger.LogInformation(
-                """key, {Key}, id {Id}, type {Type}, payload "{Payload}", created_at {CreatedAt}, observability_context {ObservabilityContext}""",
+                """key, {Key}, id {Id}, type {Type}, payload "{Payload}", created_at {CreatedAt}, trace_context {TraceContext}""",
                 key,
                 message.Id,
                 message.Type,
                 Encoding.UTF8.GetString(message.Payload),
                 message.CreatedAt,
-                message.ObservabilityContext is null ? "null" : $"{message.ObservabilityContext.Length} bytes");
+                message.TraceContext is null ? "null" : $"{message.TraceContext.Length} bytes");
         }
 
         return Task.FromResult(new BatchProduceResult { Ok = x });

@@ -60,7 +60,7 @@ app.MapPost("/publish/{count}", async (int count, Faker faker, SampleContext db,
             Type = "sample",
             Payload = Encoding.UTF8.GetBytes($"{faker.Hacker.Verb()} from {tp.Tenant}"),
             CreatedAt = DateTime.UtcNow,
-            ObservabilityContext = null // TODO
+            TraceContext = null
         });
 
     await db.OutboxMessages.AddRangeAsync(messages);

@@ -1,5 +1,3 @@
-using System.Linq.Expressions;
-using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using MySqlConnector;
 using YakShaveFx.OutboxKit.Core;
@@ -9,6 +7,12 @@ namespace YakShaveFx.OutboxKit.MySql.Polling;
 
 public static class OutboxKitConfiguratorExtensions
 {
+    /// <summary>
+    /// Configures OutboxKit to use MySql polling, with a default key.
+    /// </summary>
+    /// <param name="configurator">The <see cref="IOutboxKitConfigurator"/> to configure MySQL polling.</param>
+    /// <param name="configure">Function to configure OutboxKit with MySQL polling</param>
+    /// <returns>The <see cref="IOutboxKitConfigurator"/> instance for chaining calls.</returns>
     public static IOutboxKitConfigurator WithMySqlPolling(
         this IOutboxKitConfigurator configurator,
         Action<IMySqlPollingOutboxKitConfigurator> configure)
@@ -19,6 +23,13 @@ public static class OutboxKitConfiguratorExtensions
         return configurator;
     }
 
+    /// <summary>
+    /// Configures OutboxKit to use MySql polling, with a given key.
+    /// </summary>
+    /// <param name="configurator">The <see cref="IOutboxKitConfigurator"/> to configure MySQL polling.</param>
+    /// <param name="key">The key assigned to the outbox instance being configured.</param>
+    /// <param name="configure">Function to configure OutboxKit with MySQL polling</param>
+    /// <returns>The <see cref="IOutboxKitConfigurator"/> instance for chaining calls.</returns>
     public static IOutboxKitConfigurator WithMySqlPolling(
         this IOutboxKitConfigurator configurator,
         string key,
@@ -32,29 +43,85 @@ public static class OutboxKitConfiguratorExtensions
     }
 }
 
+/// <summary>
+/// Allows configuring the MySql polling outbox.
+/// </summary>
 public interface IMySqlPollingOutboxKitConfigurator
 {
+    /// <summary>
+    /// Configures the connection string to the MySql database.
+    /// </summary>
+    /// <param name="connectionString">The connection string to the MySql database.</param>
+    /// <returns>The <see cref="IMySqlPollingOutboxKitConfigurator"/> instance for chaining calls.</returns>
     IMySqlPollingOutboxKitConfigurator WithConnectionString(string connectionString);
 
+    /// <summary>
+    /// Configures the outbox table.
+    /// </summary>
+    /// <param name="configure">A function to configure the outbox table.</param>
+    /// <returns>The <see cref="IMySqlPollingOutboxKitConfigurator"/> instance for chaining calls.</returns>
     IMySqlPollingOutboxKitConfigurator WithTable(Action<IMySqlPollingOutboxTableConfigurator> configure);
 
+    /// <summary>
+    /// Configures the outbox polling interval.
+    /// </summary>
+    /// <param name="pollingInterval">The interval at which the outbox is polled for new messages.</param>
+    /// <returns>The <see cref="IMySqlPollingOutboxKitConfigurator"/> instance for chaining calls.</returns>
     IMySqlPollingOutboxKitConfigurator WithPollingInterval(TimeSpan pollingInterval);
 
+    /// <summary>
+    /// Configures the amount of messages to fetch from the outbox in each batch.
+    /// </summary>
+    /// <param name="batchSize">The amount of messages to fetch from the outbox in each batch.</param>
+    /// <returns>The <see cref="IMySqlPollingOutboxKitConfigurator"/> instance for chaining calls.</returns>
     IMySqlPollingOutboxKitConfigurator WithBatchSize(int batchSize);
 }
 
+/// <summary>
+/// Allows configuring the outbox table.
+/// </summary>
 public interface IMySqlPollingOutboxTableConfigurator
 {
+    /// <summary>
+    /// Configures the table name.
+    /// </summary>
+    /// <param name="name">The table name.</param>
+    /// <returns>The <see cref="IMySqlPollingOutboxTableConfigurator"/> instance for chaining calls.</returns>
     IMySqlPollingOutboxTableConfigurator WithName(string name);
 
+    /// <summary>
+    /// Configures the columns of the table, that should be fetched when polling the outbox.
+    /// </summary>
+    /// <param name="columns"></param>
+    /// <returns>The <see cref="IMySqlPollingOutboxTableConfigurator"/> instance for chaining calls.</returns>
     IMySqlPollingOutboxTableConfigurator WithColumns(IReadOnlyCollection<string> columns);
 
+    /// <summary>
+    /// Configures the column that is used as the id.
+    /// </summary>
+    /// <param name="column"></param>
+    /// <returns>The <see cref="IMySqlPollingOutboxTableConfigurator"/> instance for chaining calls.</returns>
     IMySqlPollingOutboxTableConfigurator WithIdColumn(string column);
 
+    /// <summary>
+    /// Configures the column that is used to order the messages.
+    /// </summary>
+    /// <param name="column"></param>
+    /// <returns>The <see cref="IMySqlPollingOutboxTableConfigurator"/> instance for chaining calls.</returns>
     IMySqlPollingOutboxTableConfigurator WithOrderByColumn(string column);
 
+    /// <summary>
+    /// Configures a function to get the id from a message.
+    /// </summary>
+    /// <param name="idGetter"></param>
+    /// <returns>The <see cref="IMySqlPollingOutboxTableConfigurator"/> instance for chaining calls.</returns>
     IMySqlPollingOutboxTableConfigurator WithIdGetter(Func<IMessage, object> idGetter);
 
+    /// <summary>
+    /// Configures a function to create a message from a MySql data reader.
+    /// </summary>
+    /// <param name="messageFactory"></param>
+    /// <returns>The <see cref="IMySqlPollingOutboxTableConfigurator"/> instance for chaining calls.</returns>
     IMySqlPollingOutboxTableConfigurator WithMessageFactory(Func<MySqlDataReader, IMessage> messageFactory);
 }
 
@@ -201,7 +268,7 @@ internal sealed record TableConfiguration(
             "type",
             "payload",
             "created_at",
-            "observability_context"
+            "trace_context"
         ],
         "id",
         "id",
@@ -212,7 +279,7 @@ internal sealed record TableConfiguration(
             Type = r.GetString(1),
             Payload = r.GetFieldValue<byte[]>(2),
             CreatedAt = r.GetDateTime(3),
-            ObservabilityContext = r.IsDBNull(4) ? null : r.GetFieldValue<byte[]>(4)
+            TraceContext = r.IsDBNull(4) ? null : r.GetFieldValue<byte[]>(4)
         });
 }
 
