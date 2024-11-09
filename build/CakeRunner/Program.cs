@@ -19,6 +19,7 @@ return new CakeHost()
 public class BuildContext(ICakeContext context) : FrostingContext(context)
 {
     public const string SolutionPath = "../../OutboxKit.sln";
+    public const string LibrariesPath = "../../src/";
     public const string ArtifactsPath = "../../artifacts/";
 
     public string MsBuildConfiguration { get; } = context.Argument("configuration", "Release");
@@ -81,17 +82,27 @@ public class BuildAndTestTask : FrostingTask;
 public sealed class PackageTask : FrostingTask<BuildContext>
 {
     public override void Run(BuildContext context)
-        => context.DotNetPack(
-            SolutionPath,
-            new DotNetPackSettings
-            {
-                Configuration = context.MsBuildConfiguration,
-                OutputDirectory = ArtifactsPath,
-                NoRestore = true,
-                NoBuild = true,
-                IncludeSymbols = true,
-                SymbolPackageFormat = "snupkg"
-            });
+    {
+        // if we use the SolutionPath, we get warnings for the samples, even though they're marked with IsPackable = false
+        // so to avoid warnings polluting the output, we'll specify the projects to pack
+        
+        var projectsToPack = context.GetSubDirectories(LibrariesPath);
+        
+        foreach (var projectToPackPath in projectsToPack)
+        {
+            context.DotNetPack(
+                projectToPackPath.FullPath,
+                new DotNetPackSettings
+                {
+                    Configuration = context.MsBuildConfiguration,
+                    OutputDirectory = ArtifactsPath,
+                    NoRestore = true,
+                    NoBuild = true,
+                    IncludeSymbols = true,
+                    SymbolPackageFormat = "snupkg"
+                });
+        }
+    }
 }
 
 [TaskName("Push")]
@@ -108,7 +119,7 @@ public sealed class PushTask : FrostingTask<BuildContext>
         {
             throw new InvalidOperationException("API_KEY environment variable or --api-key argument is required");
         }
-        
+
         if (packages.Count == 0)
         {
             throw new InvalidOperationException("No packages found to push");
