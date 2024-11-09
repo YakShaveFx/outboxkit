@@ -2,7 +2,8 @@ name: Publish Nightly
 on:
   workflow_dispatch:
 jobs:
-  build-and-test:
+  publish_nightly:
+    name: Publish Nightly
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
