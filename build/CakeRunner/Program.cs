@@ -102,8 +102,13 @@ public sealed class PushTask : FrostingTask<BuildContext>
         var packages = context.GetFiles(Path.Combine(ArtifactsPath, "*.nupkg"));
         var packageSymbols = context.GetFiles(Path.Combine(ArtifactsPath, "*.snupkg"));
         var source = context.Argument<string>("source");
-        var apiKey = context.EnvironmentVariable("API_KEY", context.Argument<string>("api-key"));
+        var apiKey = context.EnvironmentVariable("API_KEY", context.Argument<string>("api-key", null));
 
+        if (string.IsNullOrWhiteSpace(apiKey))
+        {
+            throw new InvalidOperationException("API_KEY environment variable or --api-key argument is required");
+        }
+        
         if (packages.Count == 0)
         {
             throw new InvalidOperationException("No packages found to push");
