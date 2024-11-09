@@ -1,7 +1,12 @@
+using System;
+using System.IO;
+using System.Linq;
 using Cake.Common;
 using Cake.Common.IO;
 using Cake.Common.Tools.DotNet;
 using Cake.Common.Tools.DotNet.Build;
+using Cake.Common.Tools.DotNet.NuGet.Push;
+using Cake.Common.Tools.DotNet.Pack;
 using Cake.Common.Tools.DotNet.Test;
 using Cake.Core;
 using Cake.Frosting;
@@ -15,7 +20,7 @@ public class BuildContext(ICakeContext context) : FrostingContext(context)
 {
     public const string SolutionPath = "../../OutboxKit.sln";
     public const string ArtifactsPath = "../../artifacts/";
-    
+
     public string MsBuildConfiguration { get; } = context.Argument("configuration", "Release");
 }
 
@@ -70,6 +75,57 @@ public sealed class TestTask : FrostingTask<BuildContext>
 [IsDependentOn(typeof(BuildTask))]
 [IsDependentOn(typeof(TestTask))]
 public class BuildAndTestTask : FrostingTask;
+
+[TaskName("Package")]
+[IsDependentOn(typeof(CleanArtifactsTask))]
+public sealed class PackageTask : FrostingTask<BuildContext>
+{
+    public override void Run(BuildContext context)
+        => context.DotNetPack(
+            SolutionPath,
+            new DotNetPackSettings
+            {
+                Configuration = context.MsBuildConfiguration,
+                OutputDirectory = ArtifactsPath,
+                NoRestore = true,
+                NoBuild = true,
+                IncludeSymbols = true,
+                SymbolPackageFormat = "snupkg"
+            });
+}
+
+[TaskName("Push")]
+public sealed class PushTask : FrostingTask<BuildContext>
+{
+    public override void Run(BuildContext context)
+    {
+        var packages = context.GetFiles(Path.Combine(ArtifactsPath, "*.nupkg"));
+        var packageSymbols = context.GetFiles(Path.Combine(ArtifactsPath, "*.snupkg"));
+        var source = context.Argument<string>("source");
+        var apiKey = context.EnvironmentVariable("API_KEY", context.Argument<string>("api-key"));
+
+        if (packages.Count == 0)
+        {
+            throw new InvalidOperationException("No packages found to push");
+        }
+
+        foreach (var package in packages.Concat(packageSymbols))
+        {
+            context.DotNetNuGetPush(
+                package,
+                new DotNetNuGetPushSettings
+                {
+                    Source = source,
+                    ApiKey = apiKey
+                });
+        }
+    }
+}
+
+[TaskName("PackageAndPush")]
+[IsDependentOn(typeof(PackageTask))]
+[IsDependentOn(typeof(PushTask))]
+public class PackageAndPushTask : FrostingTask;
 
 [TaskName("Default")]
 [IsDependentOn(typeof(BuildAndTestTask))]

@@ -8,7 +8,5 @@
 
         <!-- required for IDE0000 style rules to be enforced when building the solution -->
         <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
-
-        <Authors>João Antunes</Authors>
     </PropertyGroup>
 </Project>

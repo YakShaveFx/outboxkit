@@ -2,10 +2,14 @@
 
 ![OutboxKit logo](logo/outboxkit-128.png)
 
-The goal of OutboxKit is to provide a base to implement the [transactional outbox pattern](https://blog.codingmilitia.com/2020/04/13/aspnet-040-from-zero-to-overkill-event-driven-integration-transactional-outbox-pattern/).
+The goal of OutboxKit is to provide foundational features to assist in implementing the [transactional outbox pattern](https://blog.codingmilitia.com/2020/04/13/aspnet-040-from-zero-to-overkill-event-driven-integration-transactional-outbox-pattern/).
 
-[![NuGet](https://img.shields.io/nuget/v/YakShaveFx.OutboxKit.svg)](https://www.nuget.org/packages/YakShaveFx.OutboxKit/)
-[![Feedz.io ("nightly")](https://img.shields.io/badge/endpoint.svg?url=https%3A%2F%2Ff.feedz.io%2Fyakshavefx%2Foutboxkit%2Fshield%2FYakShaveFx.OutboxKit%2Flatest&label=Feedz.io%20%28%22nightly%22%29)](https://f.feedz.io/yakshavefx/outboxkit/packages/YakShaveFx.OutboxKit/latest/download)
+- Core [![NuGet](https://img.shields.io/nuget/v/YakShaveFx.OutboxKit.Core.svg)](https://www.nuget.org/packages/YakShaveFx.OutboxKit.Core/)
+[![Feedz.io ("nightly")](https://img.shields.io/badge/endpoint.svg?url=https%3A%2F%2Ff.feedz.io%2Fyakshavefx%2Foutboxkit%2Fshield%2FYakShaveFx.OutboxKit.Core%2Flatest&label=Feedz.io%20%28%22nightly%22%29)](https://f.feedz.io/yakshavefx/outboxkit/packages/YakShaveFx.OutboxKit.Core/latest/download)
+- MySQL [![NuGet](https://img.shields.io/nuget/v/YakShaveFx.OutboxKit.MySql.svg)](https://www.nuget.org/packages/YakShaveFx.OutboxKit.MySql/)
+[![Feedz.io ("nightly")](https://img.shields.io/badge/endpoint.svg?url=https%3A%2F%2Ff.feedz.io%2Fyakshavefx%2Foutboxkit%2Fshield%2FYakShaveFx.OutboxKit.MySql%2Flatest&label=Feedz.io%20%28%22nightly%22%29)](https://f.feedz.io/yakshavefx/outboxkit/packages/YakShaveFx.OutboxKit.MySql/latest/download)
+
+> You can add the following [Feedz.io](https://feedz.io) source to your NuGet configuration to get the nightly builds: `https://f.feedz.io/yakshavefx/outboxkit/nuget/index.json`
 
 The idea is that the library is:
 
