@@ -2,6 +2,6 @@
 outline: deep
 ---
 
-# Getting Started
+# What is OutboxKit?
 
 ## WIP 🚧

@@ -11,17 +11,17 @@ hero:
     alt: OutboxKit logo
   actions:
     - theme: brand
-      text: Getting Started
-      link: /getting-started
+      text: What is OutboxKit?
+      link: /what-is-outboxkit
     - theme: alt
       text: GitHub
       link: https://github.com/yakshavefx/outboxkit
 
 features:
   - title: 🎯 Focused
-    details: Instead of trying to do many things, the focus is to do one thing and do it well (hopefully), integrating with existing systems
+    details: Not trying to do many things, just focusing on doing one thing and doing it well (hopefully 🤞)
   - title: 🧘‍♂️ Unambitious
-    details: Designed with specific uses cases in mind, not trying to be a one-size-fits-all solution
+    details: Designed with specific uses cases in mind, not attempting to fit all possible scenarios
   - title: 🎨 Customizable
     details: While opinionated, there are a few knobs available to tweak, to simplify integration with different systems and preferences
 ---

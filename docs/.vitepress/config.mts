@@ -38,7 +38,7 @@ export default defineConfig({
     // https://vitepress.dev/reference/default-theme-config
     nav: [
       { text: "Home", link: "/" },
-      { text: "Docs", link: "/getting-started" },
+      { text: "Docs", link: "/what-is-outboxkit" },
     ],
 
     sidebar: [
@@ -46,7 +46,7 @@ export default defineConfig({
         text: "TODO",
         collapsed: true,
         items: [
-          { text: "Getting Started", link: "/getting-started" },
+          { text: "What is OutboxKit?", link: "/what-is-outboxkit" },
           { text: "TODO", link: "/todo" },
         ],
       },
