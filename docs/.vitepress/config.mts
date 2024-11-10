@@ -1,10 +1,26 @@
-import { defineConfig } from "vitepress";
+import { defineConfig, HeadConfig } from "vitepress";
+
+const analyticsHeaders: HeadConfig[] =
+  process.env.ENABLE_ANALYTICS === "true"
+    ? [
+        [
+          "script",
+          {
+            defer: "true",
+            src: "/p/js/script.js",
+            "data-api": "/p/api/event",
+            "data-domain": "outboxkit.yakshavefx.dev",
+          },
+        ],
+      ]
+    : [];
 
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
   title: "OutboxKit",
   description: "Toolkit to implement the transactional outbox pattern",
   head: [
+    ...analyticsHeaders,
     [
       "link",
       {
@@ -76,7 +92,7 @@ export default defineConfig({
     },
   },
   sitemap: {
-    hostname: 'https://outboxkit.yakshavefx.dev',
+    hostname: "https://outboxkit.yakshavefx.dev",
     lastmodDateOnly: false,
   },
 });
