@@ -114,10 +114,16 @@ public sealed class PushTask : FrostingTask<BuildContext>
         var packageSymbols = context.GetFiles(Path.Combine(ArtifactsPath, "*.snupkg"));
         var source = context.Argument<string>("source");
         var apiKey = context.EnvironmentVariable("API_KEY", context.Argument<string>("api-key", null));
+        var allowNightly = context.Argument("allow-nightly", false);
 
         if (string.IsNullOrWhiteSpace(apiKey))
         {
             throw new InvalidOperationException("API_KEY environment variable or --api-key argument is required");
+        }
+        
+        if (!allowNightly && packages.Any(p => p.FullPath.Contains("nightly", StringComparison.OrdinalIgnoreCase)))
+        {
+            throw new InvalidOperationException($"Nightly packages are not allowed to be pushed to source \"{source}\"");
         }
 
         if (packages.Count == 0)
