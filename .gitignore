@@ -322,3 +322,6 @@ ASALocalRun/
 
 #MacOS stuff
 .DS_Store
+
+docs/.vitepress/dist
+docs/.vitepress/cache

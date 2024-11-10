@@ -23,7 +23,7 @@ You probably shouldn't 😅. If possible, using more comprehensive libraries lik
 
 ## Docs
 
-Coming soon 👷‍♀️
+[OutboxKit docs](https://outboxkit.yakshavefx.dev)
 
 ## Misc
 
