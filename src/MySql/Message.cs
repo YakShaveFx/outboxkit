@@ -25,7 +25,7 @@ public sealed record Message : IMessage
     /// <summary>
     /// The date/time at which the message was created.
     /// </summary>
-    public required DateTimeOffset CreatedAt { get; init; }
+    public required DateTime CreatedAt { get; init; }
     
     /// <summary>
     /// The trace context captured at the time the message was created.

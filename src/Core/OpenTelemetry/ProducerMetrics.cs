@@ -11,7 +11,7 @@ internal sealed class ProducerMetrics : IDisposable
 
     public ProducerMetrics(IMeterFactory meterFactory)
     {
-        _meter = meterFactory.Create(MetricShared.MeterName);
+        _meter = meterFactory.Create(Constants.MeterName);
         
         _producedBatchesCounter = _meter.CreateCounter<long>(
             "outbox.produced_batches",

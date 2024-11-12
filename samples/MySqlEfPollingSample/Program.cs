@@ -45,7 +45,12 @@ builder.Services
                             Payload = r.GetFieldValue<byte[]>(2),
                             CreatedAt = r.GetDateTime(3),
                             TraceContext = r.IsDBNull(4) ? null : r.GetFieldValue<byte[]>(4)
-                        }))))
+                        })
+                        // this one is needed if using update processed instead of deleting immediately
+                        .WithProcessedAtColumn("ProcessedAt"))
+                    .WithUpdateProcessed(u => u
+                        .WithCleanUpInterval(TimeSpan.FromMinutes(1))
+                        .WithMaxAge(TimeSpan.FromMinutes(2)))))
     .AddSingleton(new Faker())
     .AddSingleton(TimeProvider.System);
 
