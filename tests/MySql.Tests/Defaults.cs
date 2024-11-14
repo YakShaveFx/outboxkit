@@ -2,7 +2,7 @@ using YakShaveFx.OutboxKit.Core.Polling;
 using YakShaveFx.OutboxKit.MySql.Polling;
 using YakShaveFx.OutboxKit.MySql.Shared;
 
-namespace YakShaveFx.OutboxKit.MySql.Tests.Polling;
+namespace YakShaveFx.OutboxKit.MySql.Tests;
 
 internal static class Defaults
 {

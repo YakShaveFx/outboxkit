@@ -9,7 +9,7 @@ namespace YakShaveFx.OutboxKit.Core.CleanUp;
 internal sealed partial class CleanUpBackgroundService(
     string key,
     TimeProvider timeProvider,
-    CorePollingSettings settings,
+    CoreCleanUpSettings settings,
     CleanerMetrics metrics,
     IServiceScopeFactory scopeFactory,
     ILogger<CleanUpBackgroundService> logger) : BackgroundService

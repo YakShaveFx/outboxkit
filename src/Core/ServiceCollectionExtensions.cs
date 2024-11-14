@@ -70,6 +70,10 @@ public static class ServiceCollectionExtensions
         foreach (var (key, pollingConfigurator) in configurator.PollingConfigurators)
         {
             var corePollingSettings = pollingConfigurator.GetCoreSettings();
+            var cleanUpSettings = new CoreCleanUpSettings
+            {
+                CleanUpInterval = corePollingSettings.CleanUpInterval
+            };
 
             // can't use AddHostedService, because it only adds one instance of the service
             services.AddSingleton<IHostedService>(s => new PollingBackgroundService(
@@ -86,7 +90,7 @@ public static class ServiceCollectionExtensions
                 services.AddSingleton<IHostedService>(s => new CleanUpBackgroundService(
                     key,
                     s.GetRequiredService<TimeProvider>(),
-                    corePollingSettings,
+                    cleanUpSettings,
                     s.GetRequiredService<CleanerMetrics>(),
                     s.GetRequiredService<IServiceScopeFactory>(),
                     s.GetRequiredService<ILogger<CleanUpBackgroundService>>()));
