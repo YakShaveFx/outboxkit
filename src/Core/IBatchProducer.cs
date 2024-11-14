@@ -12,7 +12,7 @@ public interface IBatchProducer
     /// <param name="messages">The messages to produce.</param>
     /// <param name="ct">The async cancellation token.</param>
     /// <returns>A <see cref="BatchProduceResult"/> with information about the message production execution.</returns>
-    Task<BatchProduceResult> ProduceAsync(string key, IReadOnlyCollection<IMessage> messages, CancellationToken ct);
+    Task<BatchProduceResult> ProduceAsync(OutboxKey key, IReadOnlyCollection<IMessage> messages, CancellationToken ct);
 }
 
 /// <summary>

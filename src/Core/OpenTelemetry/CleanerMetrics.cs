@@ -18,13 +18,14 @@ internal sealed class CleanerMetrics : IDisposable
             description: "The number processed outbox messages cleaned");
     }
     
-    public void MessagesCleaned(string key, int count)
+    public void MessagesCleaned(OutboxKey key, int count)
     {
         if (_producedMessagesCounter.Enabled && count > 0)
         {
             var tags = new TagList
             {
-                { "key", key }
+                { "provider", key.ProviderKey },
+                { "key", key.ClientKey }
             };
             _producedMessagesCounter.Add(count, tags);
         }

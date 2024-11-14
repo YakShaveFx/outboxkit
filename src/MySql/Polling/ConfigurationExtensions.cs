@@ -1,6 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Hosting;
 using MySqlConnector;
 using YakShaveFx.OutboxKit.Core;
 using YakShaveFx.OutboxKit.Core.CleanUp;
@@ -24,7 +23,7 @@ public static class OutboxKitConfiguratorExtensions
     {
         var pollingConfigurator = new PollingOutboxKitConfigurator();
         configure(pollingConfigurator);
-        configurator.WithPolling(pollingConfigurator);
+        configurator.WithPolling(new OutboxKey(MySqlProviderInfo.PollingProvider), pollingConfigurator);
         return configurator;
     }
 
@@ -43,7 +42,7 @@ public static class OutboxKitConfiguratorExtensions
         ArgumentException.ThrowIfNullOrWhiteSpace(key, nameof(key));
         var pollingConfigurator = new PollingOutboxKitConfigurator();
         configure(pollingConfigurator);
-        configurator.WithPolling(key, pollingConfigurator);
+        configurator.WithPolling(new OutboxKey(MySqlProviderInfo.PollingProvider, key), pollingConfigurator);
         return configurator;
     }
 }
@@ -176,7 +175,7 @@ internal sealed class PollingOutboxKitConfigurator : IPollingOutboxKitConfigurat
         return this;
     }
 
-    public void ConfigureServices(string key, IServiceCollection services)
+    public void ConfigureServices(OutboxKey key, IServiceCollection services)
     {
         if (_connectionString is null)
         {

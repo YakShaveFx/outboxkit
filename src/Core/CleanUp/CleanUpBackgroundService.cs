@@ -7,7 +7,7 @@ using YakShaveFx.OutboxKit.Core.Polling;
 namespace YakShaveFx.OutboxKit.Core.CleanUp;
 
 internal sealed partial class CleanUpBackgroundService(
-    string key,
+    OutboxKey key,
     TimeProvider timeProvider,
     CoreCleanUpSettings settings,
     CleanerMetrics metrics,
@@ -18,7 +18,7 @@ internal sealed partial class CleanUpBackgroundService(
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        LogStarting(logger, key, _cleanUpInterval);
+        LogStarting(logger, key.ProviderKey, key.ClientKey, _cleanUpInterval);
 
         await Task.Yield(); // just to let the startup continue, without waiting on this
 
@@ -43,9 +43,9 @@ internal sealed partial class CleanUpBackgroundService(
                 catch (Exception ex)
                 {
                     // we don't want the background service to stop while the application continues, so catching and logging
-                    LogUnexpectedError(logger, key, ex);
+                    LogUnexpectedError(logger, key.ProviderKey, key.ClientKey, ex);
                 }
-                
+
                 await Task.Delay(_cleanUpInterval, timeProvider, stoppingToken);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
@@ -54,18 +54,20 @@ internal sealed partial class CleanUpBackgroundService(
             }
         }
 
-        LogStopping(logger, key);
+        LogStopping(logger, key.ProviderKey, key.ClientKey);
     }
 
     [LoggerMessage(
         LogLevel.Debug,
-        Message = "Starting outbox clean up service for key \"{key}\", with clean up interval {cleanUpInterval}")]
-    private static partial void LogStarting(ILogger logger, string key, TimeSpan cleanUpInterval);
+        Message =
+            "Starting outbox clean up service for provider \"{provider}\" and key \"{key}\", with clean up interval {cleanUpInterval}")]
+    private static partial void LogStarting(ILogger logger, string provider, string key, TimeSpan cleanUpInterval);
 
-    [LoggerMessage(LogLevel.Debug, Message = "Shutting down outbox clean up service for key \"{key}\"")]
-    private static partial void LogStopping(ILogger logger, string key);
+    [LoggerMessage(LogLevel.Debug,
+        Message = "Shutting down outbox clean up service for provider \"{provider}\" and key \"{key}\"")]
+    private static partial void LogStopping(ILogger logger, string provider, string key);
 
     [LoggerMessage(LogLevel.Error,
-        Message = "Unexpected error while cleaning outbox messages for key \"{key}\"")]
-    private static partial void LogUnexpectedError(ILogger logger, string key, Exception ex);
+        Message = "Unexpected error while cleaning outbox messages for provider \"{provider}\" and key \"{key}\"")]
+    private static partial void LogUnexpectedError(ILogger logger, string provider, string key, Exception ex);
 }

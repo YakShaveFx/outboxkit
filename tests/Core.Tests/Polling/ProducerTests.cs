@@ -7,7 +7,7 @@ namespace YakShaveFx.OutboxKit.Core.Tests.Polling;
 
 public class ProducerTests
 {
-    private const string Key = "key";
+    private static readonly OutboxKey Key = new("sample-provider", "some-key");
 
     [Fact]
     public async Task WhenBatchIsEmptyThenProducerIsNotInvoked()
@@ -22,7 +22,7 @@ public class ProducerTests
 
         await producerSpy
             .DidNotReceive()
-            .ProduceAsync(Arg.Any<string>(), Arg.Any<IReadOnlyCollection<IMessage>>(), Arg.Any<CancellationToken>());
+            .ProduceAsync(Arg.Any<OutboxKey>(), Arg.Any<IReadOnlyCollection<IMessage>>(), Arg.Any<CancellationToken>());
     }
 
     [Theory]
@@ -41,7 +41,7 @@ public class ProducerTests
 
         await producerSpy
             .Received(numberOfBatches)
-            .ProduceAsync(Arg.Any<string>(), Arg.Any<IReadOnlyCollection<IMessage>>(), Arg.Any<CancellationToken>());
+            .ProduceAsync(Arg.Any<OutboxKey>(), Arg.Any<IReadOnlyCollection<IMessage>>(), Arg.Any<CancellationToken>());
     }
 
     private static OutboxBatchContextStub[] CreateBatchContexts(int numberOfBatches)

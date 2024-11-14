@@ -5,17 +5,17 @@ namespace YakShaveFx.OutboxKit.Core.Tests.Polling;
 
 public class KeyedListenerTests
 {
-    private const string SomeKey = "some-key";
-    private const string SomeOtherKey = "some-other-key";
-    private const string NonExistentKey = "non-existent-key";
-    private static readonly IEnumerable<string> ValidKeys = [SomeKey, SomeOtherKey];
+    private static readonly OutboxKey SomeKey = new("sample-provider", "some-key");
+    private static readonly OutboxKey SomeOtherKey = new("sample-provider", "some-other-key");
+    private static readonly OutboxKey NonExistentKey = new("sample-provider", "non-existent-key");
+    private static readonly IEnumerable<OutboxKey> ValidKeys = [SomeKey, SomeOtherKey];
 
     [Fact]
     public void WhenListeningForMessagesWithAnyKeyThenTheTaskRemainsInProgress()
     {
         var sut = new KeyedListener(ValidKeys);
 
-        var listenerTask = sut.WaitForMessagesAsync("some-key", CancellationToken.None);
+        var listenerTask = sut.WaitForMessagesAsync(SomeKey, CancellationToken.None);
 
         listenerTask.IsCompleted.Should().BeFalse();
     }
@@ -30,7 +30,7 @@ public class KeyedListenerTests
 
         listenerTask.IsCompleted.Should().BeTrue();
     }
-    
+
     [Fact]
     public void WhenTriggeringBeforeListeningForMessagesWithAKeyThenTheTaskCompletes()
     {

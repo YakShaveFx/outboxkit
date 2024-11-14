@@ -24,26 +24,28 @@ internal sealed class ProducerMetrics : IDisposable
             description: "The number of messages produced");
     }
     
-    public void BatchProduced(string key, bool allMessagesProduced)
+    public void BatchProduced(OutboxKey key, bool allMessagesProduced)
     {
         if (_producedBatchesCounter.Enabled)
         {
             var tags = new TagList
             {
-                { "key", key },
+                { "provider", key.ProviderKey },
+                { "key", key.ClientKey },
                 { "all_messages_produced", allMessagesProduced }
             };
             _producedBatchesCounter.Add(1, tags);
         }
     }
     
-    public void MessagesProduced(string key, int count)
+    public void MessagesProduced(OutboxKey key, int count)
     {
         if (_producedMessagesCounter.Enabled && count > 0)
         {
             var tags = new TagList
             {
-                { "key", key }
+                { "provider", key.ProviderKey },
+                { "key", key.ClientKey }
             };
             _producedMessagesCounter.Add(count, tags);
         }

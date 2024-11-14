@@ -9,7 +9,7 @@ namespace YakShaveFx.OutboxKit.Core.Tests.CleanUp;
 
 public class CleanUpBackgroundServiceTests
 {
-    private const string Key = "key";
+    private static readonly OutboxKey Key = new("sample-provider", "some-key");
     private static readonly NullLogger<CleanUpBackgroundService> Logger = NullLogger<CleanUpBackgroundService>.Instance;
     private readonly FakeTimeProvider _timeProvider = new();
     private readonly CoreCleanUpSettings _settings = new();

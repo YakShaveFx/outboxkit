@@ -11,16 +11,16 @@ internal sealed class Listener : IOutboxListener, IOutboxTrigger, IKeyedOutboxLi
     public Task WaitForMessagesAsync(CancellationToken ct) => _autoResetEvent.WaitAsync(ct);
 
     // for simplicity, implementing IKeyedOutboxListener and IKeyedOutboxTrigger as well, disregarding the key 
-    public void OnNewMessages(string key) => _autoResetEvent.Set();
-    public Task WaitForMessagesAsync(string key, CancellationToken ct) => _autoResetEvent.WaitAsync(ct);
+    public void OnNewMessages(OutboxKey key) => _autoResetEvent.Set();
+    public Task WaitForMessagesAsync(OutboxKey key, CancellationToken ct) => _autoResetEvent.WaitAsync(ct);
 }
 
-internal sealed class KeyedListener(IEnumerable<string> keys) : IKeyedOutboxListener, IKeyedOutboxTrigger
+internal sealed class KeyedListener(IEnumerable<OutboxKey> keys) : IKeyedOutboxListener, IKeyedOutboxTrigger
 {
-    private readonly FrozenDictionary<string, AsyncAutoResetEvent> _autoResetEvents
+    private readonly FrozenDictionary<OutboxKey, AsyncAutoResetEvent> _autoResetEvents
         = keys.ToFrozenDictionary(key => key, _ => new AsyncAutoResetEvent());
 
-    public void OnNewMessages(string key)
+    public void OnNewMessages(OutboxKey key)
     {
         if (!_autoResetEvents.TryGetValue(key, out var autoResetEvent))
         {
@@ -30,7 +30,7 @@ internal sealed class KeyedListener(IEnumerable<string> keys) : IKeyedOutboxList
         autoResetEvent.Set();
     }
 
-    public Task WaitForMessagesAsync(string key, CancellationToken ct)
+    public Task WaitForMessagesAsync(OutboxKey key, CancellationToken ct)
         => _autoResetEvents.TryGetValue(key, out var autoResetEvent)
             ? autoResetEvent.WaitAsync(ct)
             : throw new ArgumentException($"Key {key} not found to wait for outbox messages", nameof(key));
@@ -43,7 +43,7 @@ internal interface IOutboxListener
 
 internal interface IKeyedOutboxListener
 {
-    Task WaitForMessagesAsync(string key, CancellationToken ct);
+    Task WaitForMessagesAsync(OutboxKey key, CancellationToken ct);
 }
 
 /// <summary>
@@ -65,5 +65,6 @@ public interface IKeyedOutboxTrigger
     /// <summary>
     /// Triggers the check for new outbox messages for a specific key, without waiting for the polling interval.
     /// </summary>
-    void OnNewMessages(string key);
+    /// <param name="key">The key of the outbox to trigger.</param>
+    void OnNewMessages(OutboxKey key);
 }

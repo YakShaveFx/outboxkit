@@ -1,7 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using YakShaveFx.OutboxKit.Core;
 using YakShaveFx.OutboxKit.Core.Polling;
+using YakShaveFx.OutboxKit.MySql;
+using YakShaveFx.OutboxKit.MySql.Polling;
 
 namespace MySqlEfMultiDbPollingSample;
 
@@ -85,13 +88,13 @@ public sealed class OutboxInterceptor(IKeyedOutboxTrigger trigger, ITenantProvid
     public override async ValueTask<int> SavedChangesAsync(
         SaveChangesCompletedEventData eventData,
         int result,
-        CancellationToken cancellationToken = new())
+        CancellationToken cancellationToken = default)
     {
         if (_hasOutboxMessages)
         {
             // this isn't mandatory, but if we don't trigger it after adding messages to the outbox, they will only be published on the next polling iteration
             // if waiting for polling iterations is acceptable, then don't call this:  code gets simpler and the db is less loaded
-            trigger.OnNewMessages(tenantProvider.Tenant);
+            trigger.OnNewMessages(MySqlProviderInfo.CreatePollingKey(tenantProvider.Tenant));
         }
 
         return await base.SavedChangesAsync(eventData, result, cancellationToken);

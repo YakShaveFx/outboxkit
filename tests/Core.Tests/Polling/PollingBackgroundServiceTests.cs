@@ -8,7 +8,7 @@ namespace YakShaveFx.OutboxKit.Core.Tests.Polling;
 
 public class PollingBackgroundServiceTests
 {
-    private const string Key = "key";
+    private static readonly OutboxKey Key = new("sample-provider", "some-key");
     private static readonly NullLogger<PollingBackgroundService> Logger = NullLogger<PollingBackgroundService>.Instance;
     private readonly Listener _listener = new();
     private readonly FakeTimeProvider _timeProvider = new();

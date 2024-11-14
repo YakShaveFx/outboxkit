@@ -7,12 +7,12 @@ namespace YakShaveFx.OutboxKit.Core.Polling;
 // yes, this interface was created just to allow for using a test double, was the simpler thing I could come up with
 internal interface IProducer
 {
-    Task ProducePendingAsync(string key, CancellationToken ct);
+    Task ProducePendingAsync(OutboxKey key, CancellationToken ct);
 }
 
 internal sealed class Producer(IServiceScopeFactory serviceScopeFactory) : IProducer
 {
-    public async Task ProducePendingAsync(string key, CancellationToken ct)
+    public async Task ProducePendingAsync(OutboxKey key, CancellationToken ct)
     {
         // Invokes ProduceBatchAsync while batches are being produce, to exhaust all pending messages.
 
@@ -21,7 +21,7 @@ internal sealed class Producer(IServiceScopeFactory serviceScopeFactory) : IProd
     }
 
     // returns true if there is a new batch to produce, false otherwise
-    private async Task<bool> ProduceBatchAsync(string key, CancellationToken ct)
+    private async Task<bool> ProduceBatchAsync(OutboxKey key, CancellationToken ct)
     {
         using var activity = ActivityHelpers.StartActivity("produce outbox message batch", key);
         using var scope = serviceScopeFactory.CreateScope();
@@ -48,7 +48,7 @@ internal sealed class Producer(IServiceScopeFactory serviceScopeFactory) : IProd
     }
 
     private static Task<BatchProduceResult> ProduceBatchAsync(
-        string key,
+        OutboxKey key,
         IServiceScope scope,
         IReadOnlyCollection<IMessage> messages,
         CancellationToken ct)
@@ -57,7 +57,7 @@ internal sealed class Producer(IServiceScopeFactory serviceScopeFactory) : IProd
         return batchProducer.ProduceAsync(key, messages, ct);
     }
 
-    private static void BatchProduced(IServiceScope scope, string key, int batchSize, int producedCount)
+    private static void BatchProduced(IServiceScope scope, OutboxKey key, int batchSize, int producedCount)
     {
         var metrics = scope.ServiceProvider.GetRequiredService<ProducerMetrics>();
         metrics.BatchProduced(key, batchSize == producedCount);

@@ -42,7 +42,7 @@ public class ListenerTests
     {
         var sut = new Listener();
 
-        var listenerTask = sut.WaitForMessagesAsync("some-key", CancellationToken.None);
+        var listenerTask = sut.WaitForMessagesAsync(new ("sample-provider", "some-key"), CancellationToken.None);
 
         listenerTask.IsCompleted.Should().BeFalse();
     }
@@ -55,8 +55,8 @@ public class ListenerTests
     {
         var sut = new Listener();
 
-        var listenerTask = sut.WaitForMessagesAsync(listenKey, CancellationToken.None);
-        sut.OnNewMessages(triggerKey);
+        var listenerTask = sut.WaitForMessagesAsync(new ("sample-provider", listenKey), CancellationToken.None);
+        sut.OnNewMessages(new ("sample-provider", triggerKey));
 
         listenerTask.IsCompleted.Should().BeTrue();
     }
