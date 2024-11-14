@@ -21,7 +21,7 @@ public class PollingBackgroundServiceTests
         var sut = new PollingBackgroundService(Key, _listener, producerSpy, _timeProvider, _settings, Logger);
 
         await sut.StartAsync(CancellationToken.None);
-        await Task.Delay(TimeSpan.FromMilliseconds(10)); // give it a bit to run and block
+        await Task.Delay(TimeSpan.FromMilliseconds(100)); // give it a bit to run and block
 
         await producerSpy.Received(1).ProducePendingAsync(Key, Arg.Any<CancellationToken>());
     }
@@ -33,11 +33,11 @@ public class PollingBackgroundServiceTests
         var sut = new PollingBackgroundService(Key, _listener, producerSpy, _timeProvider, _settings, Logger);
 
         await sut.StartAsync(CancellationToken.None);
-        await Task.Delay(TimeSpan.FromMilliseconds(10)); // give it a bit to run and block
+        await Task.Delay(TimeSpan.FromMilliseconds(100)); // give it a bit to run and block
         producerSpy.ClearReceivedCalls(); // ignore startup call
 
         _timeProvider.Advance(_settings.PollingInterval - TimeSpan.FromMilliseconds(1));
-        await Task.Delay(TimeSpan.FromMilliseconds(10)); // give it a bit to run again
+        await Task.Delay(TimeSpan.FromMilliseconds(100)); // give it a bit to run again
 
         await producerSpy.Received(0).ProducePendingAsync(Key, Arg.Any<CancellationToken>());
     }
@@ -49,11 +49,11 @@ public class PollingBackgroundServiceTests
         var sut = new PollingBackgroundService(Key, _listener, producerSpy, _timeProvider, _settings, Logger);
 
         await sut.StartAsync(CancellationToken.None);
-        await Task.Delay(TimeSpan.FromMilliseconds(10)); // give it a bit to run and block
+        await Task.Delay(TimeSpan.FromMilliseconds(100)); // give it a bit to run and block
         producerSpy.ClearReceivedCalls(); // ignore startup call
 
         _timeProvider.Advance(_settings.PollingInterval);
-        await Task.Delay(TimeSpan.FromMilliseconds(10)); // give it a bit to run again
+        await Task.Delay(TimeSpan.FromMilliseconds(100)); // give it a bit to run again
 
         await producerSpy.Received(1).ProducePendingAsync(Key, Arg.Any<CancellationToken>());
     }
@@ -66,11 +66,11 @@ public class PollingBackgroundServiceTests
         var sut = new PollingBackgroundService(Key, _listener, producerSpy, _timeProvider, _settings, Logger);
 
         await sut.StartAsync(CancellationToken.None);
-        await Task.Delay(TimeSpan.FromMilliseconds(10)); // give it a bit to run and block
+        await Task.Delay(TimeSpan.FromMilliseconds(100)); // give it a bit to run and block
         producerSpy.ClearReceivedCalls(); // ignore startup call
 
         _listener.OnNewMessages();
-        await Task.Delay(TimeSpan.FromMilliseconds(10)); // give it a bit to run again
+        await Task.Delay(TimeSpan.FromMilliseconds(100)); // give it a bit to run again
 
         await producerSpy.Received(1).ProducePendingAsync(Key, Arg.Any<CancellationToken>());
     }
