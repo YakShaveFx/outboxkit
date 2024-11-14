@@ -1,7 +1,12 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using MySqlConnector;
 using YakShaveFx.OutboxKit.Core;
+using YakShaveFx.OutboxKit.Core.CleanUp;
 using YakShaveFx.OutboxKit.Core.Polling;
+using YakShaveFx.OutboxKit.MySql.CleanUp;
+using YakShaveFx.OutboxKit.MySql.Shared;
 
 namespace YakShaveFx.OutboxKit.MySql.Polling;
 
@@ -60,7 +65,7 @@ public interface IMySqlPollingOutboxKitConfigurator
     /// </summary>
     /// <param name="configure">A function to configure the outbox table.</param>
     /// <returns>The <see cref="IMySqlPollingOutboxKitConfigurator"/> instance for chaining calls.</returns>
-    IMySqlPollingOutboxKitConfigurator WithTable(Action<IMySqlPollingOutboxTableConfigurator> configure);
+    IMySqlPollingOutboxKitConfigurator WithTable(Action<IMySqlOutboxTableConfigurator> configure);
 
     /// <summary>
     /// Configures the outbox polling interval.
@@ -75,62 +80,44 @@ public interface IMySqlPollingOutboxKitConfigurator
     /// <param name="batchSize">The amount of messages to fetch from the outbox in each batch.</param>
     /// <returns>The <see cref="IMySqlPollingOutboxKitConfigurator"/> instance for chaining calls.</returns>
     IMySqlPollingOutboxKitConfigurator WithBatchSize(int batchSize);
+
+    /// <summary>
+    /// Configures the outbox to update processed messages, instead of deleting them.
+    /// </summary>
+    /// <param name="configure">A function to configure updating processed messages.</param>
+    /// <returns>The <see cref="IMySqlPollingOutboxKitConfigurator"/> instance for chaining calls.</returns>
+    /// <remarks>OutboxKit assumes the "processed at" column is a <see cref="DateTime"/> in UTC,
+    /// and uses <see cref="TimeProvider"/> to obtain the timw when completing and cleaning up the messages.</remarks>
+    IMySqlPollingOutboxKitConfigurator WithUpdateProcessed(Action<IMySqlUpdateProcessedConfigurator>? configure);
 }
 
 /// <summary>
-/// Allows configuring the outbox table.
+/// Allows configuring the outbox to update processed messages, instead of deleting them.
 /// </summary>
-public interface IMySqlPollingOutboxTableConfigurator
+public interface IMySqlUpdateProcessedConfigurator
 {
     /// <summary>
-    /// Configures the table name.
+    /// Configures the interval at which processed messages are cleaned up.
     /// </summary>
-    /// <param name="name">The table name.</param>
-    /// <returns>The <see cref="IMySqlPollingOutboxTableConfigurator"/> instance for chaining calls.</returns>
-    IMySqlPollingOutboxTableConfigurator WithName(string name);
+    /// <param name="cleanUpInterval">The interval at which processed messages are cleaned up.</param>
+    /// <returns>The <see cref="IMySqlUpdateProcessedConfigurator"/> instance for chaining calls.</returns>
+    IMySqlUpdateProcessedConfigurator WithCleanUpInterval(TimeSpan cleanUpInterval);
 
     /// <summary>
-    /// Configures the columns of the table, that should be fetched when polling the outbox.
+    /// Configures the amount of time after which processed messages should be deleted.
     /// </summary>
-    /// <param name="columns"></param>
-    /// <returns>The <see cref="IMySqlPollingOutboxTableConfigurator"/> instance for chaining calls.</returns>
-    IMySqlPollingOutboxTableConfigurator WithColumns(IReadOnlyCollection<string> columns);
-
-    /// <summary>
-    /// Configures the column that is used as the id.
-    /// </summary>
-    /// <param name="column"></param>
-    /// <returns>The <see cref="IMySqlPollingOutboxTableConfigurator"/> instance for chaining calls.</returns>
-    IMySqlPollingOutboxTableConfigurator WithIdColumn(string column);
-
-    /// <summary>
-    /// Configures the column that is used to order the messages.
-    /// </summary>
-    /// <param name="column"></param>
-    /// <returns>The <see cref="IMySqlPollingOutboxTableConfigurator"/> instance for chaining calls.</returns>
-    IMySqlPollingOutboxTableConfigurator WithOrderByColumn(string column);
-
-    /// <summary>
-    /// Configures a function to get the id from a message.
-    /// </summary>
-    /// <param name="idGetter"></param>
-    /// <returns>The <see cref="IMySqlPollingOutboxTableConfigurator"/> instance for chaining calls.</returns>
-    IMySqlPollingOutboxTableConfigurator WithIdGetter(Func<IMessage, object> idGetter);
-
-    /// <summary>
-    /// Configures a function to create a message from a MySql data reader.
-    /// </summary>
-    /// <param name="messageFactory"></param>
-    /// <returns>The <see cref="IMySqlPollingOutboxTableConfigurator"/> instance for chaining calls.</returns>
-    IMySqlPollingOutboxTableConfigurator WithMessageFactory(Func<MySqlDataReader, IMessage> messageFactory);
+    /// <param name="maxAge">The amount of time after which processed messages should be deleted.</param>
+    /// <returns>The <see cref="IMySqlUpdateProcessedConfigurator"/> instance for chaining calls.</returns>
+    IMySqlUpdateProcessedConfigurator WithMaxAge(TimeSpan maxAge);
 }
 
 internal sealed class PollingOutboxKitConfigurator : IPollingOutboxKitConfigurator, IMySqlPollingOutboxKitConfigurator
 {
-    private readonly MySqlPollingOutboxTableConfigurator _tableConfigurator = new();
+    private readonly MySqlOutboxTableConfigurator _tableConfigurator = new();
     private string? _connectionString;
-    private CorePollingSettings _corePollingSettings = new();
-    private MySqlPollingSettings _mySqlPollingSettings = new();
+    private CorePollingSettings _coreSettings = new();
+    private MySqlPollingSettings _settings = new();
+    private MySqlCleanUpSettings _cleanUpSettings = new();
 
     public IMySqlPollingOutboxKitConfigurator WithConnectionString(string connectionString)
     {
@@ -138,7 +125,7 @@ internal sealed class PollingOutboxKitConfigurator : IPollingOutboxKitConfigurat
         return this;
     }
 
-    public IMySqlPollingOutboxKitConfigurator WithTable(Action<IMySqlPollingOutboxTableConfigurator> configure)
+    public IMySqlPollingOutboxKitConfigurator WithTable(Action<IMySqlOutboxTableConfigurator> configure)
     {
         configure(_tableConfigurator);
         return this;
@@ -154,7 +141,7 @@ internal sealed class PollingOutboxKitConfigurator : IPollingOutboxKitConfigurat
                 "Polling interval must be greater than zero");
         }
 
-        _corePollingSettings = _corePollingSettings with { PollingInterval = pollingInterval };
+        _coreSettings = _coreSettings with { PollingInterval = pollingInterval };
         return this;
     }
 
@@ -165,7 +152,27 @@ internal sealed class PollingOutboxKitConfigurator : IPollingOutboxKitConfigurat
             throw new ArgumentOutOfRangeException(nameof(batchSize), batchSize, "Batch size must be greater than zero");
         }
 
-        _mySqlPollingSettings = _mySqlPollingSettings with { BatchSize = batchSize };
+        _settings = _settings with { BatchSize = batchSize };
+        return this;
+    }
+
+    public IMySqlPollingOutboxKitConfigurator WithUpdateProcessed(Action<IMySqlUpdateProcessedConfigurator>? configure)
+    {
+        var cfg = new MySqlUpdateProcessedConfigurator();
+        configure?.Invoke(cfg);
+        _settings = _settings with
+        {
+            CompletionMode = CompletionMode.Update
+        };
+        _cleanUpSettings = _cleanUpSettings with
+        {
+            MaxAge = cfg.MaxAge != TimeSpan.Zero ? cfg.MaxAge : _cleanUpSettings.MaxAge
+        };
+        _coreSettings = _coreSettings with
+        {
+            EnableCleanUp = true,
+            CleanUpInterval = cfg.CleanUpInterval != TimeSpan.Zero ? cfg.CleanUpInterval : _coreSettings.CleanUpInterval
+        };
         return this;
     }
 
@@ -176,114 +183,67 @@ internal sealed class PollingOutboxKitConfigurator : IPollingOutboxKitConfigurat
             throw new InvalidOperationException($"Connection string must be set for MySql polling with key \"{key}\"");
         }
 
+        var tableCfg = _tableConfigurator.BuildConfiguration();
+
+        if (_settings.CompletionMode == CompletionMode.Update
+            && string.IsNullOrWhiteSpace(tableCfg.ProcessedAtColumn))
+        {
+            throw new InvalidOperationException("Processed at column must be set when updating processed messages");
+        }
+
+        services.TryAddSingleton(TimeProvider.System);
+
+        if (_settings.CompletionMode == CompletionMode.Update)
+        {
+            services.AddKeyedSingleton(key, _cleanUpSettings);
+            services.AddKeyedSingleton<IOutboxCleaner>(key, (s, _) => new Cleaner(
+                tableCfg,
+                _cleanUpSettings,
+                s.GetRequiredKeyedService<MySqlDataSource>(key),
+                s.GetRequiredService<TimeProvider>()));
+        }
+
         services
             .AddKeyedMySqlDataSource(key, _connectionString)
             .AddKeyedSingleton<IOutboxBatchFetcher>(
                 key,
                 (s, _) => new OutboxBatchFetcher(
-                    _mySqlPollingSettings,
-                    _tableConfigurator.BuildConfiguration(),
-                    s.GetRequiredKeyedService<MySqlDataSource>(key)));
+                    _settings,
+                    tableCfg,
+                    s.GetRequiredKeyedService<MySqlDataSource>(key),
+                    s.GetRequiredService<TimeProvider>()));
     }
 
-    public CorePollingSettings GetCoreSettings() => _corePollingSettings;
+    public CorePollingSettings GetCoreSettings() => _coreSettings;
 }
 
-internal sealed class MySqlPollingOutboxTableConfigurator : IMySqlPollingOutboxTableConfigurator
+internal class MySqlUpdateProcessedConfigurator : IMySqlUpdateProcessedConfigurator
 {
-    private string _tableName = TableConfiguration.Default.Name;
+    public TimeSpan CleanUpInterval { get; private set; } = TimeSpan.Zero;
+    public TimeSpan MaxAge { get; private set; } = TimeSpan.Zero;
 
-    private IReadOnlyCollection<string> _columns = TableConfiguration.Default.Columns;
-    private string _idColumn = TableConfiguration.Default.IdColumn;
-    private string _orderByColumn = TableConfiguration.Default.OrderByColumn;
-    private Func<IMessage, object> _idGetter = TableConfiguration.Default.IdGetter;
-    private Func<MySqlDataReader, IMessage> _messageFactory = TableConfiguration.Default.MessageFactory;
-
-    public TableConfiguration BuildConfiguration() => new(
-        _tableName,
-        _columns,
-        _idColumn,
-        _orderByColumn,
-        _idGetter, _messageFactory);
-
-    public IMySqlPollingOutboxTableConfigurator WithName(string name)
+    public IMySqlUpdateProcessedConfigurator WithCleanUpInterval(TimeSpan cleanUpInterval)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(name, nameof(name));
-        _tableName = name;
+        CleanUpInterval = cleanUpInterval;
         return this;
     }
 
-    public IMySqlPollingOutboxTableConfigurator WithColumns(IReadOnlyCollection<string> columns)
+    public IMySqlUpdateProcessedConfigurator WithMaxAge(TimeSpan maxAge)
     {
-        if (columns is not { Count: > 0 })
-        {
-            throw new ArgumentException("Column names must not be empty", nameof(columns));
-        }
-
-        _columns = columns.Select(c => c.Trim()).ToArray();
+        MaxAge = maxAge;
         return this;
     }
-
-    public IMySqlPollingOutboxTableConfigurator WithIdColumn(string column)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(column, nameof(column));
-        _idColumn = column.Trim();
-        return this;
-    }
-
-    public IMySqlPollingOutboxTableConfigurator WithOrderByColumn(string column)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(column, nameof(column));
-        _orderByColumn = column.Trim();
-        return this;
-    }
-
-    public IMySqlPollingOutboxTableConfigurator WithIdGetter(Func<IMessage, object> idGetter)
-    {
-        ArgumentNullException.ThrowIfNull(idGetter, nameof(idGetter));
-        _idGetter = idGetter;
-        return this;
-    }
-
-    public IMySqlPollingOutboxTableConfigurator WithMessageFactory(Func<MySqlDataReader, IMessage> messageFactory)
-    {
-        ArgumentNullException.ThrowIfNull(messageFactory, nameof(messageFactory));
-        _messageFactory = messageFactory;
-        return this;
-    }
-}
-
-internal sealed record TableConfiguration(
-    string Name,
-    IReadOnlyCollection<string> Columns,
-    string IdColumn,
-    string OrderByColumn,
-    Func<IMessage, object> IdGetter,
-    Func<MySqlDataReader, IMessage> MessageFactory)
-{
-    public static TableConfiguration Default { get; } = new(
-        "outbox_messages",
-        [
-            "id",
-            "type",
-            "payload",
-            "created_at",
-            "trace_context"
-        ],
-        "id",
-        "id",
-        m => ((Message)m).Id,
-        r => new Message
-        {
-            Id = r.GetInt64(0),
-            Type = r.GetString(1),
-            Payload = r.GetFieldValue<byte[]>(2),
-            CreatedAt = r.GetDateTime(3),
-            TraceContext = r.IsDBNull(4) ? null : r.GetFieldValue<byte[]>(4)
-        });
 }
 
 internal sealed record MySqlPollingSettings
 {
     public int BatchSize { get; init; } = 100;
+
+    public CompletionMode CompletionMode { get; init; } = CompletionMode.Delete;
+}
+
+internal enum CompletionMode
+{
+    Delete,
+    Update
 }

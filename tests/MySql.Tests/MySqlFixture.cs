@@ -4,6 +4,8 @@ using Testcontainers.MySql;
 using Xunit.Abstractions;
 using Xunit.Sdk;
 using System.Text.Json;
+using YakShaveFx.OutboxKit.MySql.Polling;
+using YakShaveFx.OutboxKit.MySql.Tests.Polling;
 
 namespace YakShaveFx.OutboxKit.MySql.Tests;
 
@@ -28,8 +30,8 @@ public sealed class MySqlFixture(IMessageSink diagnosticMessageSink) : IAsyncLif
         .WithUsername("root")
         .WithPassword("root")
         .Build();
-    
-    public IDatabaseContextInitializer DbInitializer 
+
+    public IDatabaseContextInitializer DbInit
         => new DatabaseContextInitializer(_container.GetConnectionString(), diagnosticMessageSink);
 
     public Task InitializeAsync() => _container.StartAsync();
@@ -39,15 +41,14 @@ public sealed class MySqlFixture(IMessageSink diagnosticMessageSink) : IAsyncLif
     private sealed class DatabaseContextInitializer(string originalConnectionString, IMessageSink diagnosticMessageSink)
         : IDatabaseContextInitializer
     {
-        // won't be a flag, as we'll need to actually allow for configuring the custom schema
-        private bool _defaultSchema = true;
+        private DefaultSchemaSettings _settings = Defaults.Delete.DefaultSchemaSettings;
 
         // int for now, maybe we'll need a more complex seeding strategy later
         private int _seedCount;
 
-        public IDatabaseContextInitializer WithDefaultSchema()
+        public IDatabaseContextInitializer WithDefaultSchema(DefaultSchemaSettings settings)
         {
-            _defaultSchema = true;
+            _settings = settings;
             return this;
         }
 
@@ -65,7 +66,11 @@ public sealed class MySqlFixture(IMessageSink diagnosticMessageSink) : IAsyncLif
             await using var createDbCommand = new MySqlCommand($"CREATE DATABASE {databaseName};", connection);
             await createDbCommand.ExecuteNonQueryAsync();
 
-            if (_defaultSchema)
+            if (_settings.WithProcessedAtColumn)
+            {
+                await connection.SetupDatabaseWithDefaultWithProcessedAtAsync(databaseName);
+            }
+            else
             {
                 await connection.SetupDatabaseWithDefaultSettingsAsync(databaseName);
             }
@@ -113,9 +118,14 @@ public interface IDatabaseContext : IAsyncDisposable
     MySqlDataSource DataSource { get; }
 }
 
+public record DefaultSchemaSettings
+{
+    public bool WithProcessedAtColumn { get; init; }
+}
+
 public interface IDatabaseContextInitializer
 {
-    IDatabaseContextInitializer WithDefaultSchema();
+    IDatabaseContextInitializer WithDefaultSchema(DefaultSchemaSettings settings);
 
     IDatabaseContextInitializer WithSeed(int seedCount = 10);
 
@@ -135,7 +145,25 @@ file static class InitializationExtensions
                  type                  varchar(128) not null,
                  payload               longblob     not null,
                  created_at            datetime(6)  not null,
-                 trace_context longblob     null
+                 trace_context         longblob     null
+             );
+             """, connection);
+        await command.ExecuteNonQueryAsync();
+    }
+    
+    public static async Task SetupDatabaseWithDefaultWithProcessedAtAsync(this MySqlConnection connection, string databaseName)
+    {
+        await using var command = new MySqlCommand(
+            // lang=mysql
+            $"""
+             create table if not exists {databaseName}.outbox_messages
+             (
+                 id                    bigint auto_increment primary key,
+                 type                  varchar(128) not null,
+                 payload               longblob     not null,
+                 created_at            datetime(6)  not null,
+                 trace_context         longblob     null,
+                 processed_at          datetime(6)  null
              );
              """, connection);
         await command.ExecuteNonQueryAsync();
@@ -149,7 +177,7 @@ file static class InitializationExtensions
         {
             Type = "some-type",
             Payload = JsonSerializer.SerializeToUtf8Bytes($"payload{i}"),
-            CreatedAt = DateTimeOffset.UtcNow,
+            CreatedAt = DateTime.UtcNow,
             TraceContext = null
         });
 

@@ -1,36 +1,57 @@
 using MySqlConnector;
 using YakShaveFx.OutboxKit.Core;
 using YakShaveFx.OutboxKit.Core.Polling;
+using YakShaveFx.OutboxKit.MySql.Shared;
 
 namespace YakShaveFx.OutboxKit.MySql.Polling;
 
 // ReSharper disable once ClassNeverInstantiated.Global - automagically instantiated by DI
-internal sealed class OutboxBatchFetcher(
-    MySqlPollingSettings pollingSettings,
-    TableConfiguration tableCfg,
-    MySqlDataSource dataSource)
-    : IOutboxBatchFetcher
+internal sealed class OutboxBatchFetcher : IOutboxBatchFetcher
 {
-    private readonly int _batchSize = pollingSettings.BatchSize;
+    private delegate BatchContextBase BatchContextFactory(
+        IReadOnlyCollection<IMessage> messages,
+        MySqlConnection connection,
+        MySqlTransaction tx);
 
-    private readonly string _selectQuery = $"""
-                                            SELECT {string.Join(", ", tableCfg.Columns)}
-                                            FROM {tableCfg.Name}
-                                            ORDER BY {tableCfg.OrderByColumn}
-                                            LIMIT @size
-                                            FOR UPDATE;
-                                            """;
+    private readonly int _batchSize;
+    private readonly string _selectQuery;
+    private readonly Func<MySqlDataReader, IMessage> _messageFactory;
+    private readonly MySqlDataSource _dataSource;
+    private readonly BatchContextFactory _batchContextFactory;
 
-    private readonly string _deleteQuery = $"DELETE FROM {tableCfg.Name} WHERE {tableCfg.IdColumn} IN ({{0}});";
-
-    private readonly string _hasNextQuery = $"SELECT EXISTS(SELECT 1 FROM {tableCfg.Name} LIMIT 1);";
-
-    private readonly Func<MySqlDataReader, IMessage> _messageFactory = tableCfg.MessageFactory;
-    private readonly Func<IMessage, object> _idGetter = tableCfg.IdGetter;
+    public OutboxBatchFetcher(
+        MySqlPollingSettings pollingSettings,
+        TableConfiguration tableCfg,
+        MySqlDataSource dataSource,
+        TimeProvider timeProvider)
+    {
+        _dataSource = dataSource;
+        _batchSize = pollingSettings.BatchSize;
+        _selectQuery = SetupSelectQuery(pollingSettings, tableCfg);
+        var deleteQuery = SetupDeleteQuery(tableCfg);
+        var updateQuery = SetupUpdateQuery(tableCfg);
+        var hasNextQuery = SetupHasNextQuery(pollingSettings, tableCfg);
+        _messageFactory = tableCfg.MessageFactory;
+        _batchContextFactory = pollingSettings.CompletionMode switch
+        {
+            CompletionMode.Delete => (messages, connection, tx) =>
+                new BatchContextWithDelete(messages, connection, tx, tableCfg.IdGetter, deleteQuery, hasNextQuery),
+            CompletionMode.Update => (messages, connection, tx) =>
+                new BatchContextWithUpdate(
+                    messages,
+                    connection,
+                    tx,
+                    tableCfg.IdGetter,
+                    timeProvider,
+                    updateQuery,
+                    hasNextQuery),
+            _ => throw new ArgumentOutOfRangeException(nameof(pollingSettings.CompletionMode))
+        };
+    }
 
     public async Task<IOutboxBatchContext> FetchAndHoldAsync(CancellationToken ct)
     {
-        var connection = await dataSource.OpenConnectionAsync(ct);
+        var connection = await _dataSource.OpenConnectionAsync(ct);
         try
         {
             var tx = await connection.BeginTransactionAsync(ct);
@@ -43,7 +64,7 @@ internal sealed class OutboxBatchFetcher(
                 return EmptyBatchContext.Instance;
             }
 
-            return new BatchContext(messages, connection, tx, _idGetter, _deleteQuery, _hasNextQuery);
+            return _batchContextFactory(messages, connection, tx);
         }
         catch (Exception)
         {
@@ -75,17 +96,40 @@ internal sealed class OutboxBatchFetcher(
         return messages;
     }
 
-    private class BatchContext(
+    private abstract class BatchContextBase(
+        IReadOnlyCollection<IMessage> messages,
+        MySqlConnection connection,
+        string hasNextQuery) : IOutboxBatchContext
+    {
+        public IReadOnlyCollection<IMessage> Messages => messages;
+
+        public abstract Task CompleteAsync(IReadOnlyCollection<IMessage> ok, CancellationToken ct);
+
+        public async Task<bool> HasNextAsync(CancellationToken ct)
+        {
+            var command = new MySqlCommand(hasNextQuery, connection);
+            var result = await command.ExecuteScalarAsync(ct);
+            return result switch
+            {
+                bool b => b,
+                int i => i == 1,
+                long l => l == 1,
+                _ => false
+            };
+        }
+
+        public ValueTask DisposeAsync() => connection.DisposeAsync();
+    }
+
+    private class BatchContextWithDelete(
         IReadOnlyCollection<IMessage> messages,
         MySqlConnection connection,
         MySqlTransaction tx,
         Func<IMessage, object> idGetter,
         string deleteQuery,
-        string hasNextQuery) : IOutboxBatchContext
+        string hasNextQuery) : BatchContextBase(messages, connection, hasNextQuery)
     {
-        public IReadOnlyCollection<IMessage> Messages => messages;
-
-        public async Task CompleteAsync(IReadOnlyCollection<IMessage> ok, CancellationToken ct)
+        public override async Task CompleteAsync(IReadOnlyCollection<IMessage> ok, CancellationToken ct)
         {
             if (ok.Count > 0)
             {
@@ -115,20 +159,76 @@ internal sealed class OutboxBatchFetcher(
                 await tx.RollbackAsync(ct);
             }
         }
-
-        public async Task<bool> HasNextAsync(CancellationToken ct)
-        {
-            var command = new MySqlCommand(hasNextQuery, connection);
-            var result = await command.ExecuteScalarAsync(ct);
-            return result switch
-            {
-                bool b => b,
-                int i => i == 1,
-                long l => l == 1,
-                _ => false
-            };
-        }
-
-        public ValueTask DisposeAsync() => connection.DisposeAsync();
     }
+
+    private class BatchContextWithUpdate(
+        IReadOnlyCollection<IMessage> messages,
+        MySqlConnection connection,
+        MySqlTransaction tx,
+        Func<IMessage, object> idGetter,
+        TimeProvider timeProvider,
+        string updateQuery,
+        string hasNextQuery) : BatchContextBase(messages, connection, hasNextQuery)
+    {
+        public override async Task CompleteAsync(IReadOnlyCollection<IMessage> ok, CancellationToken ct)
+        {
+            if (ok.Count > 0)
+            {
+                var idParams = string.Join(", ", Enumerable.Range(0, ok.Count).Select(i => $"@id{i}"));
+                var command = new MySqlCommand(string.Format(updateQuery, idParams), connection, tx);
+                command.Parameters.AddWithValue("processedAt", timeProvider.GetUtcNow().DateTime);
+
+                var i = 0;
+                foreach (var m in ok)
+                {
+                    command.Parameters.AddWithValue($"id{i}", idGetter(m));
+                    i++;
+                }
+
+                var updated = await command.ExecuteNonQueryAsync(ct);
+
+                if (updated != ok.Count)
+                {
+                    // think if this is the best way to handle this (considering this shouldn't happen, probably it's good enough)
+                    await tx.RollbackAsync(ct);
+                    throw new InvalidOperationException("Failed to set messages as processed");
+                }
+
+                await tx.CommitAsync(ct);
+            }
+            else
+            {
+                await tx.RollbackAsync(ct);
+            }
+        }
+    }
+
+    private static string SetupHasNextQuery(MySqlPollingSettings pollingSettings, TableConfiguration tableCfg) =>
+        pollingSettings.CompletionMode == CompletionMode.Delete
+            ? $"SELECT EXISTS(SELECT 1 FROM {tableCfg.Name} LIMIT 1);"
+            : $"SELECT EXISTS(SELECT 1 FROM {tableCfg.Name} WHERE {tableCfg.ProcessedAtColumn} IS NULL LIMIT 1);";
+
+    private static string SetupUpdateQuery(TableConfiguration tableCfg) =>
+        $"UPDATE {tableCfg.Name} SET {tableCfg.ProcessedAtColumn} = @processedAt WHERE {tableCfg.IdColumn} IN ({{0}});";
+
+    private static string SetupDeleteQuery(TableConfiguration tableCfg) =>
+        $"DELETE FROM {tableCfg.Name} WHERE {tableCfg.IdColumn} IN ({{0}});";
+
+    private static string SetupSelectQuery(MySqlPollingSettings pollingSettings, TableConfiguration tableCfg) =>
+        pollingSettings.CompletionMode == CompletionMode.Delete
+            ? $"""
+               SELECT {string.Join(", ", tableCfg.Columns)}
+               FROM {tableCfg.Name}
+               ORDER BY {tableCfg.OrderByColumn}
+               LIMIT @size
+               FOR UPDATE;
+               """
+            : $"""
+               SELECT {string.Join(", ", tableCfg.Columns)}
+               FROM {tableCfg.Name}
+               WHERE {tableCfg.ProcessedAtColumn} IS NULL
+               ORDER BY {tableCfg.OrderByColumn}
+               LIMIT @size
+               FOR UPDATE;
+               """;
 }

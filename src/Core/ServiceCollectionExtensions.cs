@@ -1,6 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using YakShaveFx.OutboxKit.Core.CleanUp;
 using YakShaveFx.OutboxKit.Core.OpenTelemetry;
 using YakShaveFx.OutboxKit.Core.Polling;
 
@@ -67,6 +69,12 @@ public static class ServiceCollectionExtensions
 
         foreach (var (key, pollingConfigurator) in configurator.PollingConfigurators)
         {
+            var corePollingSettings = pollingConfigurator.GetCoreSettings();
+            var cleanUpSettings = new CoreCleanUpSettings
+            {
+                CleanUpInterval = corePollingSettings.CleanUpInterval
+            };
+
             // can't use AddHostedService, because it only adds one instance of the service
             services.AddSingleton<IHostedService>(s => new PollingBackgroundService(
                 key,
@@ -76,8 +84,21 @@ public static class ServiceCollectionExtensions
                 s.GetRequiredKeyedService<CorePollingSettings>(key),
                 s.GetRequiredService<ILogger<PollingBackgroundService>>()));
 
+            if (corePollingSettings.EnableCleanUp)
+            {
+                services.TryAddSingleton<CleanerMetrics>();
+                services.AddSingleton<IHostedService>(s => new CleanUpBackgroundService(
+                    key,
+                    s.GetRequiredService<TimeProvider>(),
+                    cleanUpSettings,
+                    s.GetRequiredService<CleanerMetrics>(),
+                    s.GetRequiredService<IServiceScopeFactory>(),
+                    s.GetRequiredService<ILogger<CleanUpBackgroundService>>()));
+            }
+            
             pollingConfigurator.ConfigureServices(key, services);
-            services.AddKeyedSingleton(key, pollingConfigurator.GetCoreSettings());
+
+            services.AddKeyedSingleton(key, corePollingSettings);
         }
     }
 

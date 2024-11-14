@@ -23,7 +23,7 @@ internal sealed class Producer(IServiceScopeFactory serviceScopeFactory) : IProd
     // returns true if there is a new batch to produce, false otherwise
     private async Task<bool> ProduceBatchAsync(string key, CancellationToken ct)
     {
-        using var activity = StartActivity("produce outbox message batch", key);
+        using var activity = ActivityHelpers.StartActivity("produce outbox message batch", key);
         using var scope = serviceScopeFactory.CreateScope();
         var batchFetcher = scope.ServiceProvider.GetRequiredKeyedService<IOutboxBatchFetcher>(key);
 
@@ -62,19 +62,5 @@ internal sealed class Producer(IServiceScopeFactory serviceScopeFactory) : IProd
         var metrics = scope.ServiceProvider.GetRequiredService<ProducerMetrics>();
         metrics.BatchProduced(key, batchSize == producedCount);
         metrics.MessagesProduced(key, producedCount);
-    }
-
-    private static Activity? StartActivity(string activityName, string key)
-    {
-        if (!ActivityHelpers.ActivitySource.HasListeners())
-        {
-            return null;
-        }
-
-        // ReSharper disable once ExplicitCallerInfoArgument
-        return ActivityHelpers.ActivitySource.StartActivity(
-            name: activityName,
-            kind: ActivityKind.Internal,
-            tags: [new(ActivityConstants.OutboxKeyTag, key)]);
     }
 }

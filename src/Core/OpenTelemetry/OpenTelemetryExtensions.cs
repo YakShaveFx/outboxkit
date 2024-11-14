@@ -11,7 +11,7 @@ public static class OutboxKitInstrumentationTracerProviderBuilderExtensions
     /// <param name="builder">The <see cref="TracerProviderBuilder"/> to configure.</param>
     /// <returns>The supplied <see cref="TracerProviderBuilder"/> for chaining calls.</returns>
     public static TracerProviderBuilder AddOutboxKitInstrumentation(this TracerProviderBuilder builder)
-        => builder.AddSource(ActivityHelpers.ActivitySource.Name);
+        => builder.AddSource(Constants.ActivitySourceName);
 }
 
 public static class OutboxKitInstrumentationMeterProviderBuilderExtensions
@@ -22,5 +22,5 @@ public static class OutboxKitInstrumentationMeterProviderBuilderExtensions
     /// <param name="builder">The <see cref="MeterProviderBuilder"/> to configure.</param>
     /// <returns>The supplied <see cref="MeterProviderBuilder"/> for chaining calls.</returns>
     public static MeterProviderBuilder AddOutboxKitInstrumentation(this MeterProviderBuilder builder)
-        => builder.AddMeter(MetricShared.MeterName);
+        => builder.AddMeter(Constants.MeterName);
 }

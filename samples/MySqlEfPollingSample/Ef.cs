@@ -21,6 +21,7 @@ public sealed class OutboxMessage : IMessage
     public required byte[] Payload { get; init; }
     public DateTime CreatedAt { get; init; }
     public byte[]? TraceContext { get; init; }
+    public DateTime? ProcessedAt { get; init; }
 }
 
 public sealed class OutboxMessageConfiguration : IEntityTypeConfiguration<OutboxMessage>
@@ -33,6 +34,7 @@ public sealed class OutboxMessageConfiguration : IEntityTypeConfiguration<Outbox
         builder.Property(e => e.Payload);
         builder.Property(e => e.CreatedAt);
         builder.Property(e => e.TraceContext);
+        builder.Property(e => e.ProcessedAt);
     }
 }
 
