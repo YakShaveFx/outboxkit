@@ -1,5 +1,3 @@
-using Microsoft.Extensions.DependencyInjection;
-
 namespace YakShaveFx.OutboxKit.Core;
 
 /// <summary>
@@ -26,14 +24,4 @@ public sealed class BatchProduceResult
     /// The messages that were successfully produced.
     /// </summary>
     public required IReadOnlyCollection<IMessage> Ok { get; init; }
-}
-
-internal interface IBatchProducerProvider
-{
-    IBatchProducer Get();
-}
-
-internal sealed class BatchProducerProvider(Type batchProducerType, IServiceProvider services) : IBatchProducerProvider
-{
-    public IBatchProducer Get() => (IBatchProducer)services.GetRequiredService(batchProducerType);
 }

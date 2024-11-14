@@ -53,7 +53,7 @@ internal sealed class Producer(IServiceScopeFactory serviceScopeFactory) : IProd
         IReadOnlyCollection<IMessage> messages,
         CancellationToken ct)
     {
-        var batchProducer = scope.ServiceProvider.GetRequiredService<IBatchProducerProvider>().Get();
+        var batchProducer = scope.ServiceProvider.GetRequiredService<IBatchProducer>();
         return batchProducer.ProduceAsync(key, messages, ct);
     }
 

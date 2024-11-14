@@ -29,10 +29,9 @@ builder.Services
         [tenantOne] = connectionStringOne,
         [tenantTwo] = connectionStringTwo
     }.ToFrozenDictionary()))
-    .AddSingleton<FakeBatchProducer>()
+    .AddSingleton<IBatchProducer, FakeBatchProducer>()
     .AddOutboxKit(kit =>
         kit
-            .WithBatchProducer<FakeBatchProducer>()
             .WithMySqlPolling(
                 tenantOne,
                 p =>
