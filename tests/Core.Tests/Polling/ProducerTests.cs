@@ -1,4 +1,3 @@
-using System.Diagnostics.Metrics;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using YakShaveFx.OutboxKit.Core.OpenTelemetry;
@@ -13,10 +12,10 @@ public class ProducerTests
     [Fact]
     public async Task WhenBatchIsEmptyThenProducerIsNotInvoked()
     {
-        var (producerSpy, producerProviderStub) = CreateProducer();
+        var producerSpy = CreateProducer();
         var services = CreateServices(
             new OutboxBatchFetcherStub([new OutboxBatchContextStub([], false)]),
-            producerProviderStub);
+            producerSpy);
         var sut = new Producer(services.GetRequiredService<IServiceScopeFactory>());
 
         await sut.ProducePendingAsync(Key, CancellationToken.None);
@@ -32,10 +31,10 @@ public class ProducerTests
     [InlineData(2)]
     public async Task WhileThereAreAvailableBatchesProducerIsInvoked(int numberOfBatches)
     {
-        var (producerSpy, producerProviderStub) = CreateProducer();
+        var producerSpy = CreateProducer();
         var services = CreateServices(
             new OutboxBatchFetcherStub(CreateBatchContexts(numberOfBatches)),
-            producerProviderStub);
+            producerSpy);
         var sut = new Producer(services.GetRequiredService<IServiceScopeFactory>());
 
         await sut.ProducePendingAsync(Key, CancellationToken.None);
@@ -50,24 +49,22 @@ public class ProducerTests
             .Select(i => new OutboxBatchContextStub([new MessageStub()], i + 1 < numberOfBatches))
             .ToArray();
 
-    private static (IBatchProducer, IBatchProducerProvider) CreateProducer()
+    private static IBatchProducer CreateProducer()
     {
         var producerSpy = Substitute.For<IBatchProducer>();
         producerSpy
             .ProduceAsync(default!, default!, default)
             .ReturnsForAnyArgs(args =>
                 Task.FromResult(new BatchProduceResult { Ok = (IReadOnlyCollection<IMessage>)args[1] }));
-        var producerProviderStub = Substitute.For<IBatchProducerProvider>();
-        producerProviderStub.Get().Returns(producerSpy);
-        return (producerSpy, producerProviderStub);
+        return producerSpy;
     }
 
     private static IServiceProvider CreateServices(
         IOutboxBatchFetcher batchFetcher,
-        IBatchProducerProvider producerProvider)
+        IBatchProducer batchProducer)
         => new ServiceCollection()
             .AddKeyedSingleton(Key, batchFetcher)
-            .AddSingleton(producerProvider)
+            .AddSingleton(batchProducer)
             .AddMetrics()
             .AddSingleton<ProducerMetrics>()
             .BuildServiceProvider();

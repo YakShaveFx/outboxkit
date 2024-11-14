@@ -28,7 +28,7 @@ public class CleanUpBackgroundServiceTests
             Logger);
         
         await sut.StartAsync(CancellationToken.None);
-        await Task.Delay(TimeSpan.FromMilliseconds(10)); // give it a bit to run and block
+        await Task.Delay(TimeSpan.FromMilliseconds(100)); // give it a bit to run and block
         
         await cleanerSpy.Received(1).CleanAsync(Arg.Any<CancellationToken>());
     }
@@ -47,11 +47,11 @@ public class CleanUpBackgroundServiceTests
             Logger);
         
         await sut.StartAsync(CancellationToken.None);
-        await Task.Delay(TimeSpan.FromMilliseconds(10)); // give it a bit to run and block
+        await Task.Delay(TimeSpan.FromMilliseconds(100)); // give it a bit to run and block
         cleanerSpy.ClearReceivedCalls(); // ignore startup call
 
         _timeProvider.Advance(_settings.CleanUpInterval - TimeSpan.FromMilliseconds(1));
-        await Task.Delay(TimeSpan.FromMilliseconds(10)); // give it a bit to run again
+        await Task.Delay(TimeSpan.FromMilliseconds(100)); // give it a bit to run again
 
         await cleanerSpy.Received(0).CleanAsync(Arg.Any<CancellationToken>());
     }
@@ -70,11 +70,11 @@ public class CleanUpBackgroundServiceTests
             Logger);
         
         await sut.StartAsync(CancellationToken.None);
-        await Task.Delay(TimeSpan.FromMilliseconds(10)); // give it a bit to run and block
+        await Task.Delay(TimeSpan.FromMilliseconds(100)); // give it a bit to run and block
         cleanerSpy.ClearReceivedCalls(); // ignore startup call
 
         _timeProvider.Advance(_settings.CleanUpInterval);
-        await Task.Delay(TimeSpan.FromMilliseconds(10)); // give it a bit to run again
+        await Task.Delay(TimeSpan.FromMilliseconds(100)); // give it a bit to run again
 
         await cleanerSpy.Received(1).CleanAsync(Arg.Any<CancellationToken>());
     }

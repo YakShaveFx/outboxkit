@@ -24,10 +24,9 @@ builder.Services
     })
     .AddHostedService<DbSetupHostedService>()
     .AddScoped<OutboxInterceptor>()
-    .AddSingleton<FakeBatchProducer>()
+    .AddSingleton<IBatchProducer, FakeBatchProducer>()
     .AddOutboxKit(kit =>
         kit
-            .WithBatchProducer<FakeBatchProducer>()
             .WithMySqlPolling(p =>
                 p
                     .WithConnectionString(connectionString)
