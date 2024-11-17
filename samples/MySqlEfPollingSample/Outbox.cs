@@ -18,9 +18,8 @@ internal sealed class FakeBatchProducer(ILogger<FakeBatchProducer> logger) : IBa
             using var activity = StartActivityFromTraceContext(message.TraceContext);
             
             logger.LogInformation(
-                """provider {provider}, key {Key}, id {Id}, type {Type}, payload "{Payload}", created_at {CreatedAt}, trace_context {TraceContext}""",
-                key.ProviderKey,
-                key.ClientKey,
+                """key {Key}, id {Id}, type {Type}, payload "{Payload}", created_at {CreatedAt}, trace_context {TraceContext}""",
+                key,
                 message.Id, 
                 message.Type,
                 Encoding.UTF8.GetString(message.Payload),
