@@ -24,8 +24,8 @@ internal sealed class CleanerMetrics : IDisposable
         {
             var tags = new TagList
             {
-                { "provider", key.ProviderKey },
-                { "key", key.ClientKey }
+                { "provider_key", key.ProviderKey },
+                { "client_key", key.ClientKey }
             };
             _producedMessagesCounter.Add(count, tags);
         }

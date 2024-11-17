@@ -38,7 +38,6 @@ public static class ServiceCollectionExtensions
 
     private static void AddOutboxKitPolling(IServiceCollection services, OutboxKitConfigurator configurator)
     {
-        services.AddSingleton<IProducer, Producer>();
         services.AddSingleton<ProducerMetrics>();
 
         if (configurator.PollingConfigurators.Count == 1)
@@ -54,7 +53,7 @@ public static class ServiceCollectionExtensions
             services.AddSingleton<KeyedListener>(s =>
             {
                 var keys = configurator.PollingConfigurators.Keys;
-                return new KeyedListener(keys);
+                return KeyedListener.Create([..keys]);
             });
             services.AddSingleton<IKeyedOutboxListener>(s => s.GetRequiredService<KeyedListener>());
             services.AddSingleton<IKeyedOutboxTrigger>(s => s.GetRequiredService<KeyedListener>());
@@ -72,20 +71,26 @@ public static class ServiceCollectionExtensions
             services.AddSingleton<IHostedService>(s => new PollingBackgroundService(
                 key,
                 s.GetRequiredService<IKeyedOutboxListener>(),
-                s.GetRequiredService<IProducer>(),
+                s.GetRequiredKeyedService<IPollingProducer>(key),
                 s.GetRequiredService<TimeProvider>(),
                 corePollingSettings,
                 s.GetRequiredService<ILogger<PollingBackgroundService>>()));
 
+            services.AddKeyedSingleton<IPollingProducer>(key, (s, _) => new PollingProducer(
+                key,
+                s.GetRequiredKeyedService<IBatchFetcher>(key),
+                s.GetRequiredService<IBatchProducer>(),
+                s.GetRequiredService<ProducerMetrics>()));
+            
             if (corePollingSettings.EnableCleanUp)
             {
                 services.TryAddSingleton<CleanerMetrics>();
                 services.AddSingleton<IHostedService>(s => new CleanUpBackgroundService(
                     key,
+                    s.GetRequiredKeyedService<IOutboxCleaner>(key),
                     s.GetRequiredService<TimeProvider>(),
                     cleanUpSettings,
                     s.GetRequiredService<CleanerMetrics>(),
-                    s.GetRequiredService<IServiceScopeFactory>(),
                     s.GetRequiredService<ILogger<CleanUpBackgroundService>>()));
             }
 

@@ -1,11 +1,9 @@
+using System.Text.Json;
 using Dapper;
 using MySqlConnector;
 using Testcontainers.MySql;
 using Xunit.Abstractions;
 using Xunit.Sdk;
-using System.Text.Json;
-using YakShaveFx.OutboxKit.MySql.Polling;
-using YakShaveFx.OutboxKit.MySql.Tests.Polling;
 
 namespace YakShaveFx.OutboxKit.MySql.Tests;
 

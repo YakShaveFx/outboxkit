@@ -1,9 +1,9 @@
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 using NSubstitute;
 using YakShaveFx.OutboxKit.Core.CleanUp;
 using YakShaveFx.OutboxKit.Core.OpenTelemetry;
+using static YakShaveFx.OutboxKit.Core.Tests.OpenTelemetryHelpers;
 
 namespace YakShaveFx.OutboxKit.Core.Tests.CleanUp;
 
@@ -13,18 +13,18 @@ public class CleanUpBackgroundServiceTests
     private static readonly NullLogger<CleanUpBackgroundService> Logger = NullLogger<CleanUpBackgroundService>.Instance;
     private readonly FakeTimeProvider _timeProvider = new();
     private readonly CoreCleanUpSettings _settings = new();
+    private readonly CleanerMetrics _metrics = new(CreateMeterFactoryStub());
 
     [Fact]
     public async Task WhenServiceStartsTheCleanerIsInvoked()
     {
         var cleanerSpy = Substitute.For<IOutboxCleaner>();
-        var services = CreateServices(cleanerSpy);
         var sut = new CleanUpBackgroundService(
             Key,
+            cleanerSpy,
             _timeProvider,
             _settings,
-            services.GetRequiredService<CleanerMetrics>(),
-            services.GetRequiredService<IServiceScopeFactory>(),
+            _metrics,
             Logger);
         
         await sut.StartAsync(CancellationToken.None);
@@ -37,13 +37,12 @@ public class CleanUpBackgroundServiceTests
     public async Task UntilIntervalIsReachedTheCleanerIsNotInvokedAgain()
     {
         var cleanerSpy = Substitute.For<IOutboxCleaner>();
-        var services = CreateServices(cleanerSpy);
         var sut = new CleanUpBackgroundService(
             Key,
+            cleanerSpy,
             _timeProvider,
             _settings,
-            services.GetRequiredService<CleanerMetrics>(),
-            services.GetRequiredService<IServiceScopeFactory>(),
+            _metrics,
             Logger);
         
         await sut.StartAsync(CancellationToken.None);
@@ -60,13 +59,12 @@ public class CleanUpBackgroundServiceTests
     public async Task WhenIntervalIsReachedTheCleanerIsInvokedAgain()
     {
         var cleanerSpy = Substitute.For<IOutboxCleaner>();
-        var services = CreateServices(cleanerSpy);
         var sut = new CleanUpBackgroundService(
             Key,
+            cleanerSpy,
             _timeProvider,
             _settings,
-            services.GetRequiredService<CleanerMetrics>(),
-            services.GetRequiredService<IServiceScopeFactory>(),
+            _metrics,
             Logger);
         
         await sut.StartAsync(CancellationToken.None);
@@ -78,11 +76,4 @@ public class CleanUpBackgroundServiceTests
 
         await cleanerSpy.Received(1).CleanAsync(Arg.Any<CancellationToken>());
     }
-    
-    private static IServiceProvider CreateServices(IOutboxCleaner cleaner)
-        => new ServiceCollection()
-            .AddKeyedSingleton(Key, cleaner)
-            .AddMetrics()
-            .AddSingleton<CleanerMetrics>()
-            .BuildServiceProvider();
 }

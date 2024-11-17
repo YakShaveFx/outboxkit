@@ -30,8 +30,8 @@ internal sealed class ProducerMetrics : IDisposable
         {
             var tags = new TagList
             {
-                { "provider", key.ProviderKey },
-                { "key", key.ClientKey },
+                { "provider_key", key.ProviderKey },
+                { "client_key", key.ClientKey },
                 { "all_messages_produced", allMessagesProduced }
             };
             _producedBatchesCounter.Add(1, tags);
@@ -44,8 +44,8 @@ internal sealed class ProducerMetrics : IDisposable
         {
             var tags = new TagList
             {
-                { "provider", key.ProviderKey },
-                { "key", key.ClientKey }
+                { "provider_key", key.ProviderKey },
+                { "client_key", key.ClientKey }
             };
             _producedMessagesCounter.Add(count, tags);
         }

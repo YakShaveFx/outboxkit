@@ -3,17 +3,42 @@ using YakShaveFx.OutboxKit.Core.Polling;
 
 namespace YakShaveFx.OutboxKit.Core.Tests.Polling;
 
-public class KeyedListenerTests
+public class MultiProviderMultiClientKeyedListenerTests
 {
-    private static readonly OutboxKey SomeKey = new("sample-provider", "some-key");
-    private static readonly OutboxKey SomeOtherKey = new("sample-provider", "some-other-key");
+    private static readonly OutboxKey SomeKey = new("sample-provider", "client-key");
+    private static readonly OutboxKey SomeOtherKey = new("sample-provider-2", "client-other-key");
     private static readonly OutboxKey NonExistentKey = new("sample-provider", "non-existent-key");
-    private static readonly IEnumerable<OutboxKey> ValidKeys = [SomeKey, SomeOtherKey];
+    private static readonly IReadOnlyCollection<OutboxKey> ValidKeys = [SomeKey, SomeOtherKey];
 
+    [Fact]
+    public void WhenInstantiatingWithSingleProviderMultipleClientsItShouldThrow()
+    {
+        var act = () => new MultiProviderMultiClientKeyedListener([
+            new OutboxKey("sample-provider", "client-key"),
+            new OutboxKey("sample-provider", "client-other-key")]);
+        act.Should().Throw<ArgumentException>();
+    }
+    
+    [Fact]
+    public void WhenInstantiatingWithMultipleProvidersSingleClientItShouldThrow()
+    {
+        var act = () => new MultiProviderMultiClientKeyedListener([
+            new OutboxKey("sample-provider", "client-key"),
+            new OutboxKey("sample-provider-2", "client-key")]);
+        act.Should().Throw<ArgumentException>();
+    }
+    
+    [Fact]
+    public void WhenInstantiatingWithSingleProviderSingleClientItShouldThrow()
+    {
+        var act = () => new MultiProviderMultiClientKeyedListener([new OutboxKey("sample-provider", "client-key")]);
+        act.Should().Throw<ArgumentException>();
+    }
+    
     [Fact]
     public void WhenListeningForMessagesWithAnyKeyThenTheTaskRemainsInProgress()
     {
-        var sut = new KeyedListener(ValidKeys);
+        var sut = new MultiProviderMultiClientKeyedListener(ValidKeys);
 
         var listenerTask = sut.WaitForMessagesAsync(SomeKey, CancellationToken.None);
 
@@ -23,7 +48,7 @@ public class KeyedListenerTests
     [Fact]
     public void WhenListeningForMessagesWithAKeyAndItIsTriggeredThenTheTaskCompletes()
     {
-        var sut = new KeyedListener(ValidKeys);
+        var sut = new MultiProviderMultiClientKeyedListener(ValidKeys);
 
         var listenerTask = sut.WaitForMessagesAsync(SomeKey, CancellationToken.None);
         sut.OnNewMessages(SomeKey);
@@ -34,7 +59,7 @@ public class KeyedListenerTests
     [Fact]
     public void WhenTriggeringBeforeListeningForMessagesWithAKeyThenTheTaskCompletes()
     {
-        var sut = new KeyedListener(ValidKeys);
+        var sut = new MultiProviderMultiClientKeyedListener(ValidKeys);
 
         sut.OnNewMessages(SomeKey);
         var listenerTask = sut.WaitForMessagesAsync(SomeKey, CancellationToken.None);
@@ -45,7 +70,7 @@ public class KeyedListenerTests
     [Fact]
     public void WhenListeningForMessagesWithAKeyAndAnotherIsTriggeredThenTheTaskRemainsInProgress()
     {
-        var sut = new KeyedListener(ValidKeys);
+        var sut = new MultiProviderMultiClientKeyedListener(ValidKeys);
 
         var listenerTask = sut.WaitForMessagesAsync(SomeKey, CancellationToken.None);
         sut.OnNewMessages(SomeOtherKey);
@@ -56,7 +81,7 @@ public class KeyedListenerTests
     [Fact]
     public void WhenListeningForMessagesWithAnInvalidKeyThenAnExceptionIsRaised()
     {
-        var sut = new KeyedListener(ValidKeys);
+        var sut = new MultiProviderMultiClientKeyedListener(ValidKeys);
 
         var act = () => sut.WaitForMessagesAsync(NonExistentKey, CancellationToken.None);
 
@@ -69,7 +94,7 @@ public class KeyedListenerTests
     [Fact]
     public void WhenTriggeringMessagesWithAnInvalidKeyThenAnExceptionIsRaised()
     {
-        var sut = new KeyedListener(ValidKeys);
+        var sut = new MultiProviderMultiClientKeyedListener(ValidKeys);
 
         var act = () => sut.OnNewMessages(NonExistentKey);
 

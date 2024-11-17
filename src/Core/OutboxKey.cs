@@ -5,4 +5,8 @@ namespace YakShaveFx.OutboxKit.Core;
 /// </summary>
 /// <param name="ProviderKey">Identifies the provider responsible for this outbox.</param>
 /// <param name="ClientKey">Identifies this outbox from a client's perspective.</param>
-public readonly record struct OutboxKey(string ProviderKey, string ClientKey = "default");
+public readonly record struct OutboxKey(string ProviderKey, string ClientKey = "default")
+{
+    /// <inheritdoc />
+    public override string ToString() => $"{ProviderKey}:{ClientKey}";
+}

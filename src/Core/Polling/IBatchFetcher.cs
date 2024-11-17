@@ -1,11 +1,11 @@
 namespace YakShaveFx.OutboxKit.Core.Polling;
 
-public interface IOutboxBatchFetcher
+public interface IBatchFetcher
 {
-    Task<IOutboxBatchContext> FetchAndHoldAsync(CancellationToken ct);
+    Task<IBatchContext> FetchAndHoldAsync(CancellationToken ct);
 }
 
-public interface IOutboxBatchContext : IAsyncDisposable
+public interface IBatchContext : IAsyncDisposable
 {
     /// <summary>
     /// The batch messages.
@@ -29,7 +29,7 @@ public interface IOutboxBatchContext : IAsyncDisposable
     Task<bool> HasNextAsync(CancellationToken ct);
 }
 
-public sealed class EmptyBatchContext : IOutboxBatchContext
+public sealed class EmptyBatchContext : IBatchContext
 {
     private static readonly Task<bool> NoNext = Task.FromResult(false);
     

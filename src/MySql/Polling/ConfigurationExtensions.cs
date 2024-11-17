@@ -23,7 +23,7 @@ public static class OutboxKitConfiguratorExtensions
     {
         var pollingConfigurator = new PollingOutboxKitConfigurator();
         configure(pollingConfigurator);
-        configurator.WithPolling(new OutboxKey(MySqlProviderInfo.PollingProvider), pollingConfigurator);
+        configurator.WithPolling(MySqlPollingProviderInfo.DefaultKey, pollingConfigurator);
         return configurator;
     }
 
@@ -42,7 +42,7 @@ public static class OutboxKitConfiguratorExtensions
         ArgumentException.ThrowIfNullOrWhiteSpace(key, nameof(key));
         var pollingConfigurator = new PollingOutboxKitConfigurator();
         configure(pollingConfigurator);
-        configurator.WithPolling(new OutboxKey(MySqlProviderInfo.PollingProvider, key), pollingConfigurator);
+        configurator.WithPolling(MySqlPollingProviderInfo.CreateKey(key), pollingConfigurator);
         return configurator;
     }
 }
@@ -184,8 +184,7 @@ internal sealed class PollingOutboxKitConfigurator : IPollingOutboxKitConfigurat
 
         var tableCfg = _tableConfigurator.BuildConfiguration();
 
-        if (_settings.CompletionMode == CompletionMode.Update
-            && string.IsNullOrWhiteSpace(tableCfg.ProcessedAtColumn))
+        if (_settings.CompletionMode == CompletionMode.Update && string.IsNullOrWhiteSpace(tableCfg.ProcessedAtColumn))
         {
             throw new InvalidOperationException("Processed at column must be set when updating processed messages");
         }
@@ -204,9 +203,9 @@ internal sealed class PollingOutboxKitConfigurator : IPollingOutboxKitConfigurat
 
         services
             .AddKeyedMySqlDataSource(key, _connectionString)
-            .AddKeyedSingleton<IOutboxBatchFetcher>(
+            .AddKeyedSingleton<IBatchFetcher>(
                 key,
-                (s, _) => new OutboxBatchFetcher(
+                (s, _) => new BatchFetcher(
                     _settings,
                     tableCfg,
                     s.GetRequiredKeyedService<MySqlDataSource>(key),

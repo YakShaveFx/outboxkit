@@ -1,24 +1,23 @@
-using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using YakShaveFx.OutboxKit.Core.OpenTelemetry;
 using YakShaveFx.OutboxKit.Core.Polling;
+using static YakShaveFx.OutboxKit.Core.Tests.OpenTelemetryHelpers;
 
 namespace YakShaveFx.OutboxKit.Core.Tests.Polling;
 
-public class ProducerTests
+public class PollingProducerTests
 {
     private static readonly OutboxKey Key = new("sample-provider", "some-key");
+    private static readonly ProducerMetrics Metrics = new(CreateMeterFactoryStub());
 
     [Fact]
     public async Task WhenBatchIsEmptyThenProducerIsNotInvoked()
     {
         var producerSpy = CreateProducer();
-        var services = CreateServices(
-            new OutboxBatchFetcherStub([new OutboxBatchContextStub([], false)]),
-            producerSpy);
-        var sut = new Producer(services.GetRequiredService<IServiceScopeFactory>());
+        var fetcherStub = new BatchFetcherStub([new BatchContextStub([], false)]);
+        var sut = new PollingProducer(Key, fetcherStub, producerSpy, Metrics);
 
-        await sut.ProducePendingAsync(Key, CancellationToken.None);
+        await sut.ProducePendingAsync(CancellationToken.None);
 
         await producerSpy
             .DidNotReceive()
@@ -32,21 +31,19 @@ public class ProducerTests
     public async Task WhileThereAreAvailableBatchesProducerIsInvoked(int numberOfBatches)
     {
         var producerSpy = CreateProducer();
-        var services = CreateServices(
-            new OutboxBatchFetcherStub(CreateBatchContexts(numberOfBatches)),
-            producerSpy);
-        var sut = new Producer(services.GetRequiredService<IServiceScopeFactory>());
+        var fetcherStub = new BatchFetcherStub(CreateBatchContexts(numberOfBatches));
+        var sut = new PollingProducer(Key, fetcherStub, producerSpy, Metrics);
 
-        await sut.ProducePendingAsync(Key, CancellationToken.None);
+        await sut.ProducePendingAsync(CancellationToken.None);
 
         await producerSpy
             .Received(numberOfBatches)
             .ProduceAsync(Arg.Any<OutboxKey>(), Arg.Any<IReadOnlyCollection<IMessage>>(), Arg.Any<CancellationToken>());
     }
 
-    private static OutboxBatchContextStub[] CreateBatchContexts(int numberOfBatches)
+    private static BatchContextStub[] CreateBatchContexts(int numberOfBatches)
         => Enumerable.Range(0, numberOfBatches)
-            .Select(i => new OutboxBatchContextStub([new MessageStub()], i + 1 < numberOfBatches))
+            .Select(i => new BatchContextStub([new MessageStub()], i + 1 < numberOfBatches))
             .ToArray();
 
     private static IBatchProducer CreateProducer()
@@ -58,36 +55,23 @@ public class ProducerTests
                 Task.FromResult(new BatchProduceResult { Ok = (IReadOnlyCollection<IMessage>)args[1] }));
         return producerSpy;
     }
-
-    private static IServiceProvider CreateServices(
-        IOutboxBatchFetcher batchFetcher,
-        IBatchProducer batchProducer)
-        => new ServiceCollection()
-            .AddKeyedSingleton(Key, batchFetcher)
-            .AddSingleton(batchProducer)
-            .AddMetrics()
-            .AddSingleton<ProducerMetrics>()
-            .BuildServiceProvider();
 }
 
 public sealed class MessageStub : IMessage;
 
-public sealed class OutboxBatchFetcherStub(OutboxBatchContextStub[] contexts) : IOutboxBatchFetcher
+public sealed class BatchFetcherStub(BatchContextStub[] contexts) : IBatchFetcher
 {
     private int _index = 0;
 
-    public Task<IOutboxBatchContext> FetchAndHoldAsync(CancellationToken ct)
+    public Task<IBatchContext> FetchAndHoldAsync(CancellationToken ct)
     {
-        if (_index >= contexts.Length)
-        {
-            return Task.FromResult<IOutboxBatchContext>(EmptyBatchContext.Instance);
-        }
-
-        return Task.FromResult<IOutboxBatchContext>(contexts[_index++]);
+        return _index >= contexts.Length
+            ? Task.FromResult<IBatchContext>(EmptyBatchContext.Instance)
+            : Task.FromResult<IBatchContext>(contexts[_index++]);
     }
 }
 
-public sealed class OutboxBatchContextStub(IReadOnlyCollection<IMessage> messages, bool hasNext) : IOutboxBatchContext
+public sealed class BatchContextStub(IReadOnlyCollection<IMessage> messages, bool hasNext) : IBatchContext
 {
     public IReadOnlyCollection<IMessage> Messages => messages;
     public Task CompleteAsync(IReadOnlyCollection<IMessage> ok, CancellationToken ct) => Task.CompletedTask;

@@ -6,7 +6,7 @@ using YakShaveFx.OutboxKit.MySql.Shared;
 namespace YakShaveFx.OutboxKit.MySql.Polling;
 
 // ReSharper disable once ClassNeverInstantiated.Global - automagically instantiated by DI
-internal sealed class OutboxBatchFetcher : IOutboxBatchFetcher
+internal sealed class BatchFetcher : IBatchFetcher
 {
     private delegate BatchContextBase BatchContextFactory(
         IReadOnlyCollection<IMessage> messages,
@@ -19,7 +19,7 @@ internal sealed class OutboxBatchFetcher : IOutboxBatchFetcher
     private readonly MySqlDataSource _dataSource;
     private readonly BatchContextFactory _batchContextFactory;
 
-    public OutboxBatchFetcher(
+    public BatchFetcher(
         MySqlPollingSettings pollingSettings,
         TableConfiguration tableCfg,
         MySqlDataSource dataSource,
@@ -49,7 +49,7 @@ internal sealed class OutboxBatchFetcher : IOutboxBatchFetcher
         };
     }
 
-    public async Task<IOutboxBatchContext> FetchAndHoldAsync(CancellationToken ct)
+    public async Task<IBatchContext> FetchAndHoldAsync(CancellationToken ct)
     {
         var connection = await _dataSource.OpenConnectionAsync(ct);
         try
@@ -99,7 +99,7 @@ internal sealed class OutboxBatchFetcher : IOutboxBatchFetcher
     private abstract class BatchContextBase(
         IReadOnlyCollection<IMessage> messages,
         MySqlConnection connection,
-        string hasNextQuery) : IOutboxBatchContext
+        string hasNextQuery) : IBatchContext
     {
         public IReadOnlyCollection<IMessage> Messages => messages;
 

@@ -21,16 +21,16 @@ internal static class ActivityHelpers
             kind: ActivityKind.Internal,
             tags:
             [
-                new(ActivityConstants.OutboxProviderTag, key.ProviderKey),
-                new(ActivityConstants.OutboxKeyTag, key.ClientKey)
+                new(ActivityConstants.OutboxProviderKeyTag, key.ProviderKey),
+                new(ActivityConstants.OutboxClientKeyTag, key.ClientKey)
             ]);
     }
 }
 
 internal static class ActivityConstants
 {
-    public const string OutboxProviderTag = "outbox.provider";
-    public const string OutboxKeyTag = "outbox.key";
+    public const string OutboxProviderKeyTag = "outbox.provider_key";
+    public const string OutboxClientKeyTag = "outbox.client_key";
     public const string OutboxBatchSizeTag = "outbox.batch.size";
     public const string OutboxCleanedCountTag = "outbox.cleaned.count";
 }
