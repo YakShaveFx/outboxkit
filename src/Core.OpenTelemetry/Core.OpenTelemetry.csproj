@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>YakShaveFx.OutboxKit.Core.OpenTelemetry</AssemblyName>
+    <RootNamespace>YakShaveFx.OutboxKit.Core.OpenTelemetry</RootNamespace>
+    <PackageId>YakShaveFx.OutboxKit.Core.OpenTelemetry</PackageId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Core\Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="OpenTelemetry" />
+  </ItemGroup>
+
+
+</Project>

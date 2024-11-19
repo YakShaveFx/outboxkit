@@ -19,6 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\Core.OpenTelemetry\Core.OpenTelemetry.csproj" />
     <ProjectReference Include="..\..\src\Core\Core.csproj" />
     <ProjectReference Include="..\..\src\MySql\MySql.csproj" />
   </ItemGroup>
