@@ -4,9 +4,9 @@ using Microsoft.Extensions.Logging;
 namespace YakShaveFx.OutboxKit.Core.Polling;
 
 internal sealed partial class PollingBackgroundService(
-    string key,
+    OutboxKey key,
     IKeyedOutboxListener listener,
-    IProducer producer,
+    IPollingProducer producer,
     TimeProvider timeProvider,
     CorePollingSettings settings,
     ILogger<PollingBackgroundService> logger) : BackgroundService
@@ -15,7 +15,7 @@ internal sealed partial class PollingBackgroundService(
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        LogStarting(logger, key, _pollingInterval);
+        LogStarting(logger, key.ProviderKey, key.ClientKey, _pollingInterval);
 
         await Task.Yield(); // just to let the startup continue, without waiting on the outbox
 
@@ -25,7 +25,7 @@ internal sealed partial class PollingBackgroundService(
             {
                 try
                 {
-                    await producer.ProducePendingAsync(key, stoppingToken);
+                    await producer.ProducePendingAsync(stoppingToken);
                 }
                 catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
                 {
@@ -35,7 +35,7 @@ internal sealed partial class PollingBackgroundService(
                 catch (Exception ex)
                 {
                     // we don't want the background service to stop while the application continues, so catching and logging
-                    LogUnexpectedError(logger, key, ex);
+                    LogUnexpectedError(logger, key.ProviderKey, key.ClientKey, ex);
                 }
 
                 // to avoid letting the delays running in the background, wasting resources
@@ -51,7 +51,11 @@ internal sealed partial class PollingBackgroundService(
                 //   something but didn't produce it, or some error occurred when producing and there are pending messages
                 await Task.WhenAny(listenerTask, delayTask);
 
-                LogWakeUp(logger, key, listenerTask.IsCompleted ? "listener triggered" : "polling interval elapsed");
+                LogWakeUp(
+                    logger,
+                    key.ProviderKey,
+                    key.ClientKey,
+                    listenerTask.IsCompleted ? "listener triggered" : "polling interval elapsed");
 
                 await linkedTokenSource.CancelAsync();
             }
@@ -61,22 +65,25 @@ internal sealed partial class PollingBackgroundService(
             }
         }
 
-        LogStopping(logger, key);
+        LogStopping(logger, key.ProviderKey, key.ClientKey);
     }
 
     [LoggerMessage(LogLevel.Debug,
         Message =
-            "Starting outbox polling background service for key \"{key}\", with polling interval {pollingInterval}")]
-    private static partial void LogStarting(ILogger logger, string key, TimeSpan pollingInterval);
-
-    [LoggerMessage(LogLevel.Debug, Message = "Shutting down outbox polling background service for key \"{key}\"")]
-    private static partial void LogStopping(ILogger logger, string key);
+            "Starting outbox polling background service for provider key \"{providerKey}\" and client key \"{clientKey}\", with polling interval {pollingInterval}")]
+    private static partial void LogStarting(ILogger logger, string providerKey, string clientKey, TimeSpan pollingInterval);
 
     [LoggerMessage(LogLevel.Debug,
-        Message = "Waking up outbox polling background service for key \"{key}\", due to \"{reason}\"")]
-    private static partial void LogWakeUp(ILogger logger, string key, string reason);
+        Message = "Shutting down outbox polling background service for provider key \"{providerKey}\" and client key \"{clientKey}\"")]
+    private static partial void LogStopping(ILogger logger, string providerKey, string clientKey);
+
+    [LoggerMessage(LogLevel.Debug,
+        Message =
+            "Waking up outbox polling background service for provider key \"{providerKey}\" and client key \"{clientKey}\", due to \"{reason}\"")]
+    private static partial void LogWakeUp(ILogger logger, string providerKey, string clientKey, string reason);
 
     [LoggerMessage(LogLevel.Error,
-        Message = "Unexpected error while producing pending outbox messages for key \"{key}\"")]
-    private static partial void LogUnexpectedError(ILogger logger, string key, Exception ex);
+        Message =
+            "Unexpected error while producing pending outbox messages for provider key \"{providerKey}\" and client key \"{clientKey}\"")]
+    private static partial void LogUnexpectedError(ILogger logger, string providerKey, string clientKey, Exception ex);
 }

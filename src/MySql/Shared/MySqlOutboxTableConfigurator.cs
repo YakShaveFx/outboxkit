@@ -1,6 +1,5 @@
 using MySqlConnector;
 using YakShaveFx.OutboxKit.Core;
-using YakShaveFx.OutboxKit.MySql.Polling;
 
 namespace YakShaveFx.OutboxKit.MySql.Shared;
 

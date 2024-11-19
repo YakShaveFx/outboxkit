@@ -8,7 +8,7 @@ using YakShaveFx.OutboxKit.MySql.Shared;
 namespace YakShaveFx.OutboxKit.MySql.Tests.Polling;
 
 [Collection(MySqlCollection.Name)]
-public class OutboxBatchFetcherTests(MySqlFixture mySqlFixture)
+public class BatchFetcherTests(MySqlFixture mySqlFixture)
 {
     public enum CompletionMode { Delete, Update }
     
@@ -21,8 +21,8 @@ public class OutboxBatchFetcherTests(MySqlFixture mySqlFixture)
         await using var dbCtx = await mySqlFixture.DbInit.WithDefaultSchema(schemaSettings).WithSeed().InitAsync();
         await using var connection = await dbCtx.DataSource.OpenConnectionAsync();
 
-        var sut1 = new OutboxBatchFetcher(mySqlSettings, tableConfig, dbCtx.DataSource, TimeProvider.System);
-        var sut2 = new OutboxBatchFetcher(mySqlSettings, tableConfig, dbCtx.DataSource, TimeProvider.System);
+        var sut1 = new BatchFetcher(mySqlSettings, tableConfig, dbCtx.DataSource, TimeProvider.System);
+        var sut2 = new BatchFetcher(mySqlSettings, tableConfig, dbCtx.DataSource, TimeProvider.System);
 
         // start fetching from the outbox concurrently
         // - first delay is to ensure the first query is executed before the second one
@@ -55,8 +55,8 @@ public class OutboxBatchFetcherTests(MySqlFixture mySqlFixture)
         await using var dbCtx = await mySqlFixture.DbInit.WithDefaultSchema(schemaSettings).WithSeed().InitAsync();
         await using var connection = await dbCtx.DataSource.OpenConnectionAsync();
 
-        var sut1 = new OutboxBatchFetcher(mySqlSettings, tableConfig, dbCtx.DataSource, TimeProvider.System);
-        var sut2 = new OutboxBatchFetcher(mySqlSettings, tableConfig, dbCtx.DataSource, TimeProvider.System);
+        var sut1 = new BatchFetcher(mySqlSettings, tableConfig, dbCtx.DataSource, TimeProvider.System);
+        var sut2 = new BatchFetcher(mySqlSettings, tableConfig, dbCtx.DataSource, TimeProvider.System);
 
         var batch1Task = sut1.FetchAndHoldAsync(CancellationToken.None);
         await Task.Delay(TimeSpan.FromSeconds(1));
@@ -78,7 +78,7 @@ public class OutboxBatchFetcherTests(MySqlFixture mySqlFixture)
         await using var dbCtx = await mySqlFixture.DbInit.WithDefaultSchema(schemaSettings).WithSeed().InitAsync();
         await using var connection = await dbCtx.DataSource.OpenConnectionAsync();
 
-        var sut = new OutboxBatchFetcher(mySqlSettings, tableConfig, dbCtx.DataSource, TimeProvider.System);
+        var sut = new BatchFetcher(mySqlSettings, tableConfig, dbCtx.DataSource, TimeProvider.System);
 
         var messagesBefore = await FetchMessageIdsAsync(connection);
 
@@ -104,7 +104,7 @@ public class OutboxBatchFetcherTests(MySqlFixture mySqlFixture)
 
         await using var connection = await dbCtx.DataSource.OpenConnectionAsync();
 
-        var sut = new OutboxBatchFetcher(mySqlSettings, tableConfig, dbCtx.DataSource, fakeTimeProvider);
+        var sut = new BatchFetcher(mySqlSettings, tableConfig, dbCtx.DataSource, fakeTimeProvider);
 
         var messagesBefore = await FetchMessageSummariesAsync(connection);
 
@@ -127,7 +127,7 @@ public class OutboxBatchFetcherTests(MySqlFixture mySqlFixture)
         await using var dbCtx = await mySqlFixture.DbInit.WithDefaultSchema(schemaSettings).WithSeed().InitAsync();
         await using var connection = await dbCtx.DataSource.OpenConnectionAsync();
 
-        var sut = new OutboxBatchFetcher(mySqlSettings, tableConfig, dbCtx.DataSource, TimeProvider.System);
+        var sut = new BatchFetcher(mySqlSettings, tableConfig, dbCtx.DataSource, TimeProvider.System);
 
         var batchTask = sut.FetchAndHoldAsync(CancellationToken.None);
         await using var batch = await batchTask;
@@ -148,7 +148,7 @@ public class OutboxBatchFetcherTests(MySqlFixture mySqlFixture)
             .InitAsync();
         await using var connection = await dbCtx.DataSource.OpenConnectionAsync();
 
-        var sut = new OutboxBatchFetcher(mySqlSettings, tableConfig, dbCtx.DataSource, TimeProvider.System);
+        var sut = new BatchFetcher(mySqlSettings, tableConfig, dbCtx.DataSource, TimeProvider.System);
 
         var batch = await sut.FetchAndHoldAsync(CancellationToken.None);
         await batch.CompleteAsync(batch.Messages, CancellationToken.None);

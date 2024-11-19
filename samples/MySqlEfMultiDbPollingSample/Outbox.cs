@@ -6,14 +6,14 @@ namespace MySqlEfMultiDbPollingSample;
 
 internal sealed class FakeBatchProducer(ILogger<FakeBatchProducer> logger) : IBatchProducer
 {
-    public Task<BatchProduceResult> ProduceAsync(string key, IReadOnlyCollection<IMessage> messages, CancellationToken ct)
+    public Task<BatchProduceResult> ProduceAsync(OutboxKey key, IReadOnlyCollection<IMessage> messages, CancellationToken ct)
     {
         var x = messages.Cast<Message>().ToList();
         logger.LogInformation("Producing {Count} messages", x.Count);
         foreach (var message in x)
         {
             logger.LogInformation(
-                """key, {Key}, id {Id}, type {Type}, payload "{Payload}", created_at {CreatedAt}, trace_context {TraceContext}""",
+                """key {Key}, id {Id}, type {Type}, payload "{Payload}", created_at {CreatedAt}, trace_context {TraceContext}""",
                 key,
                 message.Id,
                 message.Type,

@@ -6,12 +6,13 @@ using YakShaveFx.OutboxKit.MySql.Shared;
 namespace YakShaveFx.OutboxKit.MySql.Polling;
 
 // ReSharper disable once ClassNeverInstantiated.Global - automagically instantiated by DI
-internal sealed class OutboxBatchFetcher : IOutboxBatchFetcher
+internal sealed class BatchFetcher : IBatchFetcher
 {
-    private delegate BatchContextBase BatchContextFactory(
-        IReadOnlyCollection<IMessage> messages,
-        MySqlConnection connection,
-        MySqlTransaction tx);
+    private delegate BatchContext BatchContextFactory(
+        IReadOnlyCollection<IMessage> messages, MySqlConnection connection, MySqlTransaction tx);
+
+    private delegate MySqlCommand CompleteCommandFactory(
+        IReadOnlyCollection<IMessage> ok, MySqlConnection connection, MySqlTransaction tx);
 
     private readonly int _batchSize;
     private readonly string _selectQuery;
@@ -19,7 +20,7 @@ internal sealed class OutboxBatchFetcher : IOutboxBatchFetcher
     private readonly MySqlDataSource _dataSource;
     private readonly BatchContextFactory _batchContextFactory;
 
-    public OutboxBatchFetcher(
+    public BatchFetcher(
         MySqlPollingSettings pollingSettings,
         TableConfiguration tableCfg,
         MySqlDataSource dataSource,
@@ -32,24 +33,24 @@ internal sealed class OutboxBatchFetcher : IOutboxBatchFetcher
         var updateQuery = SetupUpdateQuery(tableCfg);
         var hasNextQuery = SetupHasNextQuery(pollingSettings, tableCfg);
         _messageFactory = tableCfg.MessageFactory;
-        _batchContextFactory = pollingSettings.CompletionMode switch
-        {
-            CompletionMode.Delete => (messages, connection, tx) =>
-                new BatchContextWithDelete(messages, connection, tx, tableCfg.IdGetter, deleteQuery, hasNextQuery),
-            CompletionMode.Update => (messages, connection, tx) =>
-                new BatchContextWithUpdate(
-                    messages,
-                    connection,
-                    tx,
-                    tableCfg.IdGetter,
-                    timeProvider,
-                    updateQuery,
-                    hasNextQuery),
-            _ => throw new ArgumentOutOfRangeException(nameof(pollingSettings.CompletionMode))
-        };
+        _batchContextFactory =
+            (okMessages, connection, transaction) => new BatchContext(
+                okMessages,
+                connection,
+                transaction,
+                hasNextQuery,
+                pollingSettings.CompletionMode switch
+                {
+                    CompletionMode.Delete => (ok, conn, tx) =>
+                        CreateDeleteCommand(deleteQuery, tableCfg.IdGetter, ok, conn, tx),
+                    CompletionMode.Update => (ok, conn, tx) =>
+                        CreateUpdateCommand(updateQuery, timeProvider, tableCfg.IdGetter, ok, conn, tx),
+                    _ => throw new InvalidOperationException(
+                        $"Invalid completion mode {pollingSettings.CompletionMode}")
+                });
     }
 
-    public async Task<IOutboxBatchContext> FetchAndHoldAsync(CancellationToken ct)
+    public async Task<IBatchContext> FetchAndHoldAsync(CancellationToken ct)
     {
         var connection = await _dataSource.OpenConnectionAsync(ct);
         try
@@ -96,14 +97,37 @@ internal sealed class OutboxBatchFetcher : IOutboxBatchFetcher
         return messages;
     }
 
-    private abstract class BatchContextBase(
+    private sealed class BatchContext(
         IReadOnlyCollection<IMessage> messages,
         MySqlConnection connection,
-        string hasNextQuery) : IOutboxBatchContext
+        MySqlTransaction tx,
+        string hasNextQuery,
+        CompleteCommandFactory completeCommandFactory)
+        : IBatchContext
     {
         public IReadOnlyCollection<IMessage> Messages => messages;
 
-        public abstract Task CompleteAsync(IReadOnlyCollection<IMessage> ok, CancellationToken ct);
+        public async Task CompleteAsync(IReadOnlyCollection<IMessage> ok, CancellationToken ct)
+        {
+            if (ok.Count > 0)
+            {
+                await using var command = completeCommandFactory(ok, connection, tx);
+                var completed = await command.ExecuteNonQueryAsync(ct);
+
+                if (completed != ok.Count)
+                {
+                    // think if this is the best way to handle this (considering this shouldn't happen, probably it's good enough)
+                    await tx.RollbackAsync(ct);
+                    throw new InvalidOperationException("Failed to complete messages");
+                }
+
+                await tx.CommitAsync(ct);
+            }
+            else
+            {
+                await tx.RollbackAsync(ct);
+            }
+        }
 
         public async Task<bool> HasNextAsync(CancellationToken ct)
         {
@@ -121,86 +145,46 @@ internal sealed class OutboxBatchFetcher : IOutboxBatchFetcher
         public ValueTask DisposeAsync() => connection.DisposeAsync();
     }
 
-    private class BatchContextWithDelete(
-        IReadOnlyCollection<IMessage> messages,
-        MySqlConnection connection,
-        MySqlTransaction tx,
-        Func<IMessage, object> idGetter,
+    private static MySqlCommand CreateDeleteCommand(
         string deleteQuery,
-        string hasNextQuery) : BatchContextBase(messages, connection, hasNextQuery)
+        Func<IMessage, object> idGetter,
+        IReadOnlyCollection<IMessage> ok,
+        MySqlConnection connection,
+        MySqlTransaction tx)
     {
-        public override async Task CompleteAsync(IReadOnlyCollection<IMessage> ok, CancellationToken ct)
+        var idParams = string.Join(", ", Enumerable.Range(0, ok.Count).Select(i => $"@id{i}"));
+        var command = new MySqlCommand(string.Format(deleteQuery, idParams), connection, tx);
+
+        var i = 0;
+        foreach (var m in ok)
         {
-            if (ok.Count > 0)
-            {
-                var idParams = string.Join(", ", Enumerable.Range(0, ok.Count).Select(i => $"@id{i}"));
-                var command = new MySqlCommand(string.Format(deleteQuery, idParams), connection, tx);
-
-                var i = 0;
-                foreach (var m in ok)
-                {
-                    command.Parameters.AddWithValue($"id{i}", idGetter(m));
-                    i++;
-                }
-
-                var deleted = await command.ExecuteNonQueryAsync(ct);
-
-                if (deleted != ok.Count)
-                {
-                    // think if this is the best way to handle this (considering this shouldn't happen, probably it's good enough)
-                    await tx.RollbackAsync(ct);
-                    throw new InvalidOperationException("Failed to delete messages");
-                }
-
-                await tx.CommitAsync(ct);
-            }
-            else
-            {
-                await tx.RollbackAsync(ct);
-            }
+            command.Parameters.AddWithValue($"id{i}", idGetter(m));
+            i++;
         }
+
+        return command;
     }
 
-    private class BatchContextWithUpdate(
-        IReadOnlyCollection<IMessage> messages,
-        MySqlConnection connection,
-        MySqlTransaction tx,
-        Func<IMessage, object> idGetter,
-        TimeProvider timeProvider,
+    private static MySqlCommand CreateUpdateCommand(
         string updateQuery,
-        string hasNextQuery) : BatchContextBase(messages, connection, hasNextQuery)
+        TimeProvider timeProvider,
+        Func<IMessage, object> idGetter,
+        IReadOnlyCollection<IMessage> ok,
+        MySqlConnection connection,
+        MySqlTransaction tx)
     {
-        public override async Task CompleteAsync(IReadOnlyCollection<IMessage> ok, CancellationToken ct)
+        var idParams = string.Join(", ", Enumerable.Range(0, ok.Count).Select(i => $"@id{i}"));
+        var command = new MySqlCommand(string.Format(updateQuery, idParams), connection, tx);
+        command.Parameters.AddWithValue("processedAt", timeProvider.GetUtcNow().DateTime);
+
+        var i = 0;
+        foreach (var m in ok)
         {
-            if (ok.Count > 0)
-            {
-                var idParams = string.Join(", ", Enumerable.Range(0, ok.Count).Select(i => $"@id{i}"));
-                var command = new MySqlCommand(string.Format(updateQuery, idParams), connection, tx);
-                command.Parameters.AddWithValue("processedAt", timeProvider.GetUtcNow().DateTime);
-
-                var i = 0;
-                foreach (var m in ok)
-                {
-                    command.Parameters.AddWithValue($"id{i}", idGetter(m));
-                    i++;
-                }
-
-                var updated = await command.ExecuteNonQueryAsync(ct);
-
-                if (updated != ok.Count)
-                {
-                    // think if this is the best way to handle this (considering this shouldn't happen, probably it's good enough)
-                    await tx.RollbackAsync(ct);
-                    throw new InvalidOperationException("Failed to set messages as processed");
-                }
-
-                await tx.CommitAsync(ct);
-            }
-            else
-            {
-                await tx.RollbackAsync(ct);
-            }
+            command.Parameters.AddWithValue($"id{i}", idGetter(m));
+            i++;
         }
+
+        return command;
     }
 
     private static string SetupHasNextQuery(MySqlPollingSettings pollingSettings, TableConfiguration tableCfg) =>
