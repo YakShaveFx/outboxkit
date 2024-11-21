@@ -16,11 +16,11 @@ public interface IMySqlOutboxTableConfigurator
     IMySqlOutboxTableConfigurator WithName(string name);
 
     /// <summary>
-    /// Configures the columns of the table, that should be fetched when polling the outbox.
+    /// Configures the columns of the table that should be fetched when polling the outbox.
     /// </summary>
     /// <param name="columns"></param>
     /// <returns>The <see cref="IMySqlOutboxTableConfigurator"/> instance for chaining calls.</returns>
-    IMySqlOutboxTableConfigurator WithColumns(IReadOnlyCollection<string> columns);
+    IMySqlOutboxTableConfigurator WithColumnSelection(IReadOnlyCollection<string> columns);
 
     /// <summary>
     /// Configures the column that is used as the id.
@@ -54,8 +54,9 @@ public interface IMySqlOutboxTableConfigurator
     /// <summary>
     /// Configures a function to create a message from a MySql data reader.
     /// </summary>
-    /// <param name="messageFactory"></param>
+    /// <param name="messageFactory">A <see cref="MySqlDataReader"/> to read an <see cref="IMessage"/> from.</param>
     /// <returns>The <see cref="IMySqlOutboxTableConfigurator"/> instance for chaining calls.</returns>
+    /// <remarks>To fetch a column by its index (i.e. using <see cref="MySqlDataReader.GetFieldValue{T}"/>) the index of each column matches that of <see cref="WithColumnSelection"/>.</remarks>
     IMySqlOutboxTableConfigurator WithMessageFactory(Func<MySqlDataReader, IMessage> messageFactory);
 }
 
@@ -86,7 +87,7 @@ internal sealed class MySqlOutboxTableConfigurator : IMySqlOutboxTableConfigurat
         return this;
     }
 
-    public IMySqlOutboxTableConfigurator WithColumns(IReadOnlyCollection<string> columns)
+    public IMySqlOutboxTableConfigurator WithColumnSelection(IReadOnlyCollection<string> columns)
     {
         if (columns is not { Count: > 0 })
         {

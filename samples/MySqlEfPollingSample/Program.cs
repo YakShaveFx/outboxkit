@@ -33,7 +33,7 @@ builder.Services
                     // this is optional, only needed if not using the default table structure
                     .WithTable(t => t
                         .WithName("OutboxMessages")
-                        .WithColumns(["Id", "Type", "Payload", "CreatedAt", "TraceContext"])
+                        .WithColumnSelection(["Id", "Type", "Payload", "CreatedAt", "TraceContext"])
                         .WithIdColumn("Id")
                         .WithOrderByColumn("Id")
                         .WithIdGetter(m => ((OutboxMessage)m).Id)

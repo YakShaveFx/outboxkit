@@ -86,7 +86,7 @@ public interface IMySqlPollingOutboxKitConfigurator
     /// <param name="configure">A function to configure updating processed messages.</param>
     /// <returns>The <see cref="IMySqlPollingOutboxKitConfigurator"/> instance for chaining calls.</returns>
     /// <remarks>OutboxKit assumes the "processed at" column is a <see cref="DateTime"/> in UTC,
-    /// and uses <see cref="TimeProvider"/> to obtain the timw when completing and cleaning up the messages.</remarks>
+    /// and uses <see cref="TimeProvider"/> to obtain the time when completing and cleaning up the messages.</remarks>
     IMySqlPollingOutboxKitConfigurator WithUpdateProcessed(Action<IMySqlUpdateProcessedConfigurator>? configure);
 }
 
