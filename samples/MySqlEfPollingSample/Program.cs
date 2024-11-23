@@ -72,7 +72,7 @@ var app = builder.Build();
 
 app.MapGet("/", () => "Hello World!");
 
-app.MapPost("/publish/{count}", async (int count, Faker faker, SampleContext db) =>
+app.MapPost("/produce/{count}", async (int count, Faker faker, SampleContext db) =>
 {
     var messages = Enumerable.Range(0, count)
         .Select(_ => new OutboxMessage
