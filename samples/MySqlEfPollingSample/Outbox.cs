@@ -14,9 +14,8 @@ internal sealed class FakeBatchProducer(ILogger<FakeBatchProducer> logger) : IBa
         IReadOnlyCollection<IMessage> messages,
         CancellationToken ct)
     {
-        var x = messages.Cast<OutboxMessage>().ToList();
-        logger.LogInformation("Producing {Count} messages", x.Count);
-        foreach (var message in x)
+        logger.LogInformation("Producing {Count} messages", messages.Count);
+        foreach (var message in messages.Cast<OutboxMessage>())
         {
             using var activity = StartActivityFromTraceContext(message.TraceContext);
 
@@ -30,7 +29,7 @@ internal sealed class FakeBatchProducer(ILogger<FakeBatchProducer> logger) : IBa
                 message.TraceContext is null ? "null" : $"{message.TraceContext.Length} bytes");
         }
 
-        return Task.FromResult(new BatchProduceResult { Ok = x });
+        return Task.FromResult(new BatchProduceResult { Ok = messages });
     }
 
     private static Activity? StartActivityFromTraceContext(byte[]? traceContext)

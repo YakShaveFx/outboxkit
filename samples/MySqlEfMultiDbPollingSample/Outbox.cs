@@ -8,9 +8,8 @@ internal sealed class FakeBatchProducer(ILogger<FakeBatchProducer> logger) : IBa
 {
     public Task<BatchProduceResult> ProduceAsync(OutboxKey key, IReadOnlyCollection<IMessage> messages, CancellationToken ct)
     {
-        var x = messages.Cast<Message>().ToList();
-        logger.LogInformation("Producing {Count} messages", x.Count);
-        foreach (var message in x)
+        logger.LogInformation("Producing {Count} messages", messages.Count);
+        foreach (var message in messages.Cast<Message>())
         {
             logger.LogInformation(
                 """key {Key}, id {Id}, type {Type}, payload "{Payload}", created_at {CreatedAt}, trace_context {TraceContext}""",
@@ -22,6 +21,6 @@ internal sealed class FakeBatchProducer(ILogger<FakeBatchProducer> logger) : IBa
                 message.TraceContext is null ? "null" : $"{message.TraceContext.Length} bytes");
         }
 
-        return Task.FromResult(new BatchProduceResult { Ok = x });
+        return Task.FromResult(new BatchProduceResult { Ok = messages });
     }
 }
