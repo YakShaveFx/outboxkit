@@ -54,22 +54,54 @@ export default defineConfig({
     // https://vitepress.dev/reference/default-theme-config
     nav: [
       { text: "Home", link: "/" },
-      { text: "Docs", link: "/what-is-outboxkit" },
+      { text: "Docs", link: "/intro/what-is-outboxkit" },
     ],
 
     sidebar: [
       {
-        text: "TODO",
+        text: "Intro",
         collapsed: true,
         items: [
-          { text: "What is OutboxKit?", link: "/what-is-outboxkit" },
-          { text: "TODO", link: "/todo" },
+          { text: "Quickstart", link: "/intro/quickstart" },
+          { text: "What is OutboxKit?", link: "/intro/what-is-outboxkit" },
+          { text: "Transactional outbox pattern", link: "/intro/transactional-outbox-pattern" },
+          { text: "Concepts", link: "/intro/concepts" },
+        ],
+      },
+      {
+        text: "Core",
+        collapsed: true,
+        items: [
+          { text: "Core overview", link: "/core/overview" },
+          { text: "Producing messages", link: "/core/producing-messages" },
+          { text: "Polling trigger optimization", link: "/core/polling-trigger-optimization" },
         ],
       },
       {
         text: "MySQL",
         collapsed: true,
-        items: [{ text: "TODO", link: "/todo" }],
+        items: [
+          { text: "MySQL provider overview", link: "/mysql/overview" },
+          { text: "Polling", link: "/mysql/polling" },
+        ],
+      },
+      {
+        text: "Observability",
+        collapsed: true,
+        items: [
+          { text: "Observability overview", link: "/observability/overview" },
+          { text: "Built-in instrumentation", link: "/observability/built-in-instrumentation" },
+          { text: "Helpers", link: "/observability/helpers" }
+        ],
+      },
+      {
+        text: "Building a provider",
+        collapsed: true,
+        items: [
+          { text: "Building a provider overview", link: "/building-a-provider/overview" },
+          { text: "Polling", link: "/building-a-provider/polling" },
+          { text: "Push", link: "/building-a-provider/push" }
+        ],
       },
     ],
 

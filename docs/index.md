@@ -12,10 +12,10 @@ hero:
   actions:
     - theme: brand
       text: What is OutboxKit?
-      link: /what-is-outboxkit
+      link: /intro/what-is-outboxkit
     - theme: alt
-      text: GitHub
-      link: https://github.com/yakshavefx/outboxkit
+      text: Quickstart
+      link: /intro/quickstart
 
 features:
   - title: 🎯 Focused

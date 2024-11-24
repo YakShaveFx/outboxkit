@@ -37,7 +37,7 @@ builder.Services
                         .WithIdColumn("Id")
                         .WithOrderByColumn("Id")
                         .WithIdGetter(m => ((OutboxMessage)m).Id)
-                        .WithMessageFactory(r => new OutboxMessage
+                        .WithMessageFactory(static r => new OutboxMessage
                         {
                             Id = r.GetInt64(0),
                             Type = r.GetString(1),

@@ -25,7 +25,7 @@ internal sealed record TableConfiguration(
         "id",
         "",
         m => ((Message)m).Id,
-        r => new Message
+        static r => new Message
         {
             Id = r.GetInt64(0),
             Type = r.GetString(1),
