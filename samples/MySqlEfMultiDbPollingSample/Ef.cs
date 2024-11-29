@@ -92,7 +92,7 @@ public sealed class OutboxInterceptor(IKeyedOutboxTrigger trigger, ITenantProvid
         {
             // this isn't mandatory, but if we don't trigger it after adding messages to the outbox, they will only be produced on the next polling iteration
             // if waiting for polling iterations is acceptable, then don't call this:  code gets simpler and the db is less loaded
-            trigger.OnNewMessages(MySqlPollingProviderInfo.CreateKey(tenantProvider.Tenant));
+            trigger.OnNewMessages(MySqlPollingProvider.CreateKey(tenantProvider.Tenant));
         }
 
         return await base.SavedChangesAsync(eventData, result, cancellationToken);

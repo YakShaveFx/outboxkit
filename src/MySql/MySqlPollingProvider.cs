@@ -5,7 +5,7 @@ namespace YakShaveFx.OutboxKit.MySql;
 /// <summary>
 /// Exposes the provider information and helper functions for the MySQL polling provider.
 /// </summary>
-public static class MySqlPollingProviderInfo
+public static class MySqlPollingProvider
 {
     private const string ProviderKey = "mysql_polling";
 

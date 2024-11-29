@@ -20,7 +20,7 @@ Core ideas for this toolkit:
 
 ## Why use this?
 
-You probably shouldn't 😅. If possible, using more comprehensive libraries like Wolverine, NServiceBus, Brighter, etc, is probably a better idea, as they give a more integrated messaging experience (plus they've been at this for much longer, and in a wider range of scenarios). This toolkit is aimed at scenarios where greater degree of customization of the whole messaging approach is wanted.
+You probably shouldn't 😅. If possible, using more comprehensive libraries like [Wolverine](https://wolverinefx.net), [NServiceBus](https://particular.net/nservicebus), [Brighter](https://github.com/BrighterCommand/Brighter), [MassTransit](https://masstransit.io), etc, is probably a better idea, as they give a more integrated messaging experience (plus they've been at this for much longer, and in a wider range of scenarios). This toolkit is aimed at scenarios where greater degree of customization of the whole messaging approach is wanted.
 
 ## Docs
 

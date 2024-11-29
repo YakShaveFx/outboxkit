@@ -23,7 +23,7 @@ public static class OutboxKitConfiguratorExtensions
     {
         var pollingConfigurator = new PollingOutboxKitConfigurator();
         configure(pollingConfigurator);
-        configurator.WithPolling(MySqlPollingProviderInfo.DefaultKey, pollingConfigurator);
+        configurator.WithPolling(MySqlPollingProvider.DefaultKey, pollingConfigurator);
         return configurator;
     }
 
@@ -42,7 +42,7 @@ public static class OutboxKitConfiguratorExtensions
         ArgumentException.ThrowIfNullOrWhiteSpace(key, nameof(key));
         var pollingConfigurator = new PollingOutboxKitConfigurator();
         configure(pollingConfigurator);
-        configurator.WithPolling(MySqlPollingProviderInfo.CreateKey(key), pollingConfigurator);
+        configurator.WithPolling(MySqlPollingProvider.CreateKey(key), pollingConfigurator);
         return configurator;
     }
 }
