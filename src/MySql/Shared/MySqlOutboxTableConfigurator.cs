@@ -25,21 +25,21 @@ public interface IMySqlOutboxTableConfigurator
     /// <summary>
     /// Configures the column that is used as the id.
     /// </summary>
-    /// <param name="column"></param>
+    /// <param name="column">The column that is used as the id.</param>
     /// <returns>The <see cref="IMySqlOutboxTableConfigurator"/> instance for chaining calls.</returns>
     IMySqlOutboxTableConfigurator WithIdColumn(string column);
 
     /// <summary>
-    /// Configures the column that is used to order the messages.
+    /// Configures the order in which messages are fetched from the outbox.
     /// </summary>
-    /// <param name="column"></param>
+    /// <param name="sortExpressions">The expressions that define the order in which messages are fetched from the outbox.</param>
     /// <returns>The <see cref="IMySqlOutboxTableConfigurator"/> instance for chaining calls.</returns>
-    IMySqlOutboxTableConfigurator WithOrderByColumn(string column);
+    IMySqlOutboxTableConfigurator WithSorting(IReadOnlyCollection<SortExpression> sortExpressions);
 
     /// <summary>
     /// Configures the column that indicates when a message was processed.
     /// </summary>
-    /// <param name="column"></param>
+    /// <param name="column">The column that indicates when a message was processed.</param>
     /// <returns>The <see cref="IMySqlOutboxTableConfigurator"/> instance for chaining calls.</returns>
     /// <remarks>Only used when outbox is configured to update processed messages, instead of deleting them.</remarks>
     IMySqlOutboxTableConfigurator WithProcessedAtColumn(string column);
@@ -66,7 +66,7 @@ internal sealed class MySqlOutboxTableConfigurator : IMySqlOutboxTableConfigurat
 
     private IReadOnlyCollection<string> _columns = TableConfiguration.Default.Columns;
     private string _idColumn = TableConfiguration.Default.IdColumn;
-    private string _orderByColumn = TableConfiguration.Default.OrderByColumn;
+    private IReadOnlyCollection<SortExpression> _sortExpressions = TableConfiguration.Default.SortExpressions;
     private string _processedAtColumn = TableConfiguration.Default.ProcessedAtColumn;
     private Func<IMessage, object> _idGetter = TableConfiguration.Default.IdGetter;
     private Func<MySqlDataReader, IMessage> _messageFactory = TableConfiguration.Default.MessageFactory;
@@ -75,7 +75,7 @@ internal sealed class MySqlOutboxTableConfigurator : IMySqlOutboxTableConfigurat
         _tableName,
         _columns,
         _idColumn,
-        _orderByColumn,
+        _sortExpressions,
         _processedAtColumn,
         _idGetter,
         _messageFactory);
@@ -105,10 +105,14 @@ internal sealed class MySqlOutboxTableConfigurator : IMySqlOutboxTableConfigurat
         return this;
     }
 
-    public IMySqlOutboxTableConfigurator WithOrderByColumn(string column)
+    public IMySqlOutboxTableConfigurator WithSorting(IReadOnlyCollection<SortExpression> sortExpressions)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(column, nameof(column));
-        _orderByColumn = column.Trim();
+        if (sortExpressions is not { Count: > 0 })
+        {
+            throw new ArgumentException("Sort expressions must not be empty", nameof(sortExpressions));
+        }
+
+        _sortExpressions = sortExpressions;
         return this;
     }
 

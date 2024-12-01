@@ -60,7 +60,7 @@ services.AddOutboxKit(kit =>
                             "TraceContext"
                         ])
                     .WithIdColumn("Id")
-                    .WithOrderByColumn("Id")
+                    .WithSorting([new SortExpression("Id")])
                     .WithIdGetter(m => ((OutboxMessage)m).Id)
                     .WithMessageFactory(static r => new OutboxMessage
                     {
@@ -92,7 +92,9 @@ Note that not everything is always mandatory, but there are some things that are
 
 `WithColumnSelection` is where you specify the names of the columns that should be fetched from the table. No need to set all of them, just the ones you need for producing messages, plus the column corresponding to the id, as it will be needed to acknowledge the messages produced.
 
-The name passed to `WithIdColumn` will be used when acknowledging the messages produced, while `WithOrderByColumn` is used to order the rows when fetching them.
+The name passed to `WithIdColumn` will be used when acknowledging the messages produced.
+
+`WithSorting` receives a collection of column names, as well as a sort direction, which are used to sort the rows when fetching them from the outbox.
 
 When acknowledging the messages, the function passed to `WithIdGetter` will be used to get the id from the message instance, which will then be used for message completion.
 

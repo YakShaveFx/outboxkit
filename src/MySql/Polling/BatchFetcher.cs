@@ -203,7 +203,7 @@ internal sealed class BatchFetcher : IBatchFetcher
             ? $"""
                SELECT {string.Join(", ", tableCfg.Columns)}
                FROM {tableCfg.Name}
-               ORDER BY {tableCfg.OrderByColumn}
+               ORDER BY {SetupOrderByClause(tableCfg)}
                LIMIT @size
                FOR UPDATE;
                """
@@ -211,8 +211,19 @@ internal sealed class BatchFetcher : IBatchFetcher
                SELECT {string.Join(", ", tableCfg.Columns)}
                FROM {tableCfg.Name}
                WHERE {tableCfg.ProcessedAtColumn} IS NULL
-               ORDER BY {tableCfg.OrderByColumn}
+               ORDER BY {SetupOrderByClause(tableCfg)}
                LIMIT @size
                FOR UPDATE;
                """;
+
+    private static string SetupOrderByClause(TableConfiguration tableCfg) =>
+        string.Join(", ", tableCfg.SortExpressions.Select(se => $"{se.Column} {DirectionToString(se.Direction)}"));
+
+    private static string DirectionToString(SortDirection direction) =>
+        direction switch
+        {
+            SortDirection.Ascending => "ASC",
+            SortDirection.Descending => "DESC",
+            _ => throw new ArgumentOutOfRangeException(nameof(direction), direction, null)
+        };
 }
