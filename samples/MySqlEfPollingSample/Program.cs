@@ -8,6 +8,7 @@ using OpenTelemetry.Trace;
 using YakShaveFx.OutboxKit.Core;
 using YakShaveFx.OutboxKit.Core.OpenTelemetry;
 using YakShaveFx.OutboxKit.MySql.Polling;
+using YakShaveFx.OutboxKit.MySql.Shared;
 using static YakShaveFx.OutboxKit.Core.OpenTelemetry.TraceContextHelpers;
 
 const string connectionString =
@@ -35,7 +36,7 @@ builder.Services
                         .WithName("OutboxMessages")
                         .WithColumnSelection(["Id", "Type", "Payload", "CreatedAt", "TraceContext"])
                         .WithIdColumn("Id")
-                        .WithOrderByColumn("Id")
+                        .WithSorting([new SortExpression("Id")])
                         .WithIdGetter(m => ((OutboxMessage)m).Id)
                         .WithMessageFactory(static r => new OutboxMessage
                         {

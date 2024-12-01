@@ -3,11 +3,33 @@ using YakShaveFx.OutboxKit.Core;
 
 namespace YakShaveFx.OutboxKit.MySql.Shared;
 
+/// <summary>
+/// Defines the sort direction.
+/// </summary>
+public enum SortDirection
+{
+    /// <summary>
+    /// Ascending sort direction.
+    /// </summary>
+    Ascending,
+    /// <summary>
+    /// Descending sort direction.
+    /// </summary>
+    Descending
+}
+
+/// <summary>
+/// Defines the column and direction to sort the fetched outbox messages by.
+/// </summary>
+/// <param name="Column">The column to sort by.</param>
+/// <param name="Direction">The direction in which to sort by.</param>
+public record SortExpression(string Column, SortDirection Direction = SortDirection.Ascending);
+
 internal sealed record TableConfiguration(
     string Name,
     IReadOnlyCollection<string> Columns,
     string IdColumn,
-    string OrderByColumn,
+    IReadOnlyCollection<SortExpression> SortExpressions,
     string ProcessedAtColumn,
     Func<IMessage, object> IdGetter,
     Func<MySqlDataReader, IMessage> MessageFactory)
@@ -22,7 +44,7 @@ internal sealed record TableConfiguration(
             "trace_context"
         ],
         "id",
-        "id",
+        [new("id")],
         "",
         m => ((Message)m).Id,
         static r => new Message
