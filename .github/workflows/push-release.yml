@@ -1,0 +1,31 @@
+name: Publish Release
+on:
+  workflow_dispatch:
+env:
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+jobs:
+  publish_release:
+    name: Publish Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          filter: tree:0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            9.0.x
+
+      - name: Build & Test
+        run: ./build/build.sh --target=BuildAndTest
+        
+      - name: Package & Push
+        run: ./build/build.sh --target=PackageAndPush --source="https://api.nuget.org/v3/index.json" --allow-nightly=false
+        env:
+          API_KEY: ${{ secrets.NUGET_API_KEY }}
