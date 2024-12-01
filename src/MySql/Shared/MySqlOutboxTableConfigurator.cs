@@ -112,7 +112,7 @@ internal sealed class MySqlOutboxTableConfigurator : IMySqlOutboxTableConfigurat
             throw new ArgumentException("Sort expressions must not be empty", nameof(sortExpressions));
         }
 
-        _sortExpressions = sortExpressions;
+        _sortExpressions = sortExpressions.Select(se => se with { Column = se.Column.Trim() }).ToArray();
         return this;
     }
 
