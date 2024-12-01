@@ -12,7 +12,7 @@ To register to get messages to produce, you need to implement the `IBatchProduce
 
 The collection of messages and the `CancellationToken` are rather obvious in their purpose, but the `OutboxKey` might need some explanation. The `OutboxKey` is a unique identifier for the outbox that the messages belong to. It is composed by two keys, one for the provider (e.g. `mysql_polling`) and one for the outbox itself, which you can configure when setting things up. This is only potentially interesting if you are taking advantage of the multi-provider and/or multi-database capabilities of OutboxKit.
 
-The `BatchProduceResult` type, includes a property `Ok`, which should be set with collection of messages that were successfully produced. OutboxKit will use this to only acknowledge the messages you provided.
+The `BatchProduceResult` type, includes a property `Ok`, which should be set with collection of messages that were successfully produced. OutboxKit will use this to only acknowledge the messages you provided. Note that depending on the provider implementation, it might not be possible to complete the messages in cases of partial success, particularly if not matching the sequence in which they were provided to produce. Look closely at the provider docs for information on potential issues.
 
 ## Setup
 

@@ -23,5 +23,10 @@ public sealed class BatchProduceResult
     /// <summary>
     /// The messages that were successfully produced.
     /// </summary>
+    /// <remarks>
+    /// <para>Note that depending on the provider implementation, it might not be possible to complete the messages in cases of partial success,
+    /// particularly if not matching the sequence in which they were provided to be produced.</para>
+    /// <para>Look closely at the provider docs for information on potential issues.</para>
+    /// </remarks>
     public required IReadOnlyCollection<IMessage> Ok { get; init; }
 }

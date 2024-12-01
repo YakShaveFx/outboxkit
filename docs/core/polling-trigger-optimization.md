@@ -18,6 +18,12 @@ If you have a multi-provider or multi-database setup, you should use `IKeyedOutb
 
 These interfaces are automatically registered in the DI container, so you can just inject them where you need them.
 
+::: info Note
+This optimization is only effective when the code that stores the message is running in the same process as the code that polls for new messages.
+
+If you want to have OutboxKit running in an isolated process, you have to be okay with the latency introduced by the polling approach, or look at push alternatives.
+:::
+
 ## Example usage
 
 Let's see a couple of example of using these trigger interfaces, with the MySQL polling provider as a reference.
