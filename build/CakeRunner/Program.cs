@@ -85,9 +85,9 @@ public sealed class PackageTask : FrostingTask<BuildContext>
     {
         // if we use the SolutionPath, we get warnings for the samples, even though they're marked with IsPackable = false
         // so to avoid warnings polluting the output, we'll specify the projects to pack
-        
+
         var projectsToPack = context.GetSubDirectories(LibrariesPath);
-        
+
         foreach (var projectToPackPath in projectsToPack)
         {
             context.DotNetPack(
@@ -111,7 +111,6 @@ public sealed class PushTask : FrostingTask<BuildContext>
     public override void Run(BuildContext context)
     {
         var packages = context.GetFiles(Path.Combine(ArtifactsPath, "*.nupkg"));
-        var packageSymbols = context.GetFiles(Path.Combine(ArtifactsPath, "*.snupkg"));
         var source = context.Argument<string>("source");
         var apiKey = context.EnvironmentVariable("API_KEY", context.Argument<string>("api-key", null));
         var allowNightly = context.Argument("allow-nightly", false);
@@ -120,10 +119,11 @@ public sealed class PushTask : FrostingTask<BuildContext>
         {
             throw new InvalidOperationException("API_KEY environment variable or --api-key argument is required");
         }
-        
+
         if (!allowNightly && packages.Any(p => p.FullPath.Contains("nightly", StringComparison.OrdinalIgnoreCase)))
         {
-            throw new InvalidOperationException($"Nightly packages are not allowed to be pushed to source \"{source}\"");
+            throw new InvalidOperationException(
+                $"Nightly packages are not allowed to be pushed to source \"{source}\"");
         }
 
         if (packages.Count == 0)
@@ -131,7 +131,7 @@ public sealed class PushTask : FrostingTask<BuildContext>
             throw new InvalidOperationException("No packages found to push");
         }
 
-        foreach (var package in packages.Concat(packageSymbols))
+        foreach (var package in packages)
         {
             context.DotNetNuGetPush(
                 package,
