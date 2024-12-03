@@ -29,7 +29,7 @@
     </ItemGroup>
 
     <PropertyGroup Label="Package Information">
-        <Description>Unambitious and opinionated toolkit to assist in implementing the transactional outbox pattern.</Description>
+        <Description>Toolkit to assist in implementing the transactional outbox pattern.</Description>
         <Copyright>João Antunes</Copyright>
         <Authors>João Antunes</Authors>
         <RepositoryType>git</RepositoryType>
