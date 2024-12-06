@@ -16,13 +16,13 @@ services:
 
   producer:
     build:
-      context: ../../
-      dockerfile: ./samples/MySqlEndToEndPollingSample/Producer/Dockerfile
+      context: ../../../
+      dockerfile: ./samples/mysql/MySqlEndToEndPollingSample/Producer/Dockerfile
     image: mysqlendtoendpollingsample/producer:latest
     # ports:
     #   - "6001:8080"
     environment:
-      ConnectionStrings__Default: "server=mysql;port=3306;database=outboxkit_end_to_end_sample;user=user;password=pass;Maximum Pool Size=50;"
+      ConnectionStrings__Default: "server=mysql;port=3306;database=outboxkit_end_to_end_sample;user=user;password=pass;Maximum Pool Size=45;"
       OpenTelemetrySettings__Endpoint: "http://lgtm:4317"
       OTEL_METRIC_EXPORT_INTERVAL: 15000 # 15 seconds
       RabbitMq__Host: "rabbitmq"
@@ -45,12 +45,12 @@ services:
             cpus: 0.1
         limits:
           memory: 256M
-          cpus: 1.0
+          cpus: 1.5
 
   consumer:
     build:
-      context: ../../
-      dockerfile: ./samples/MySqlEndToEndPollingSample/Consumer/Dockerfile
+      context: ../../../
+      dockerfile: ./samples/mysql/MySqlEndToEndPollingSample/Consumer/Dockerfile
     image: mysqlendtoendpollingsample/consumer:latest
     ports:
       - "6002:8080"
@@ -98,7 +98,7 @@ services:
           cpus: 0.5
         limits:
           memory: 768M
-          cpus: 2.5
+          cpus: 3.0
   
   lgtm:
     image: grafana/otel-lgtm

@@ -520,7 +520,7 @@
           "useBackend": false
         }
       ],
-      "title": "Messages batches produced per second (all producers)",
+      "title": "Message batches produced per second (all producers)",
       "type": "timeseries"
     },
     {
@@ -622,7 +622,7 @@
           "useBackend": false
         }
       ],
-      "title": "Messages batches produced per second (by producer)",
+      "title": "Message batches produced per second (by producer)",
       "type": "timeseries"
     },
     {
