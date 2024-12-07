@@ -75,7 +75,10 @@ services.AddOutboxKit(kit =>
                     .WithProcessedAtColumn("ProcessedAt"))
                 .WithUpdateProcessed(u => u
                     .WithCleanUpInterval(TimeSpan.FromHours(1))
-                    .WithMaxAge(TimeSpan.FromDays(1)))));
+                    .WithMaxAge(TimeSpan.FromDays(1)))
+                .WithSelectForUpdateConcurrencyControl()
+                .WithAdvisoryLockConcurrencyControl()
+            ));
 ```
 
 So, it's not massive, but there still are a few options available.
@@ -106,7 +109,9 @@ By default, OutboxKit will immediately delete the messages that have been produc
 
 When using `WithUpdateProcessed`, you can configure how often the messages should be cleaned up using `WithCleanUpInterval`, and how old the messages should be before they are cleaned up using `WithMaxAge`.
 
-Finally, if you use `WithUpdateProcessed`, you must use `WithProcessedAtColumn`, in order for the library to do its magic. When marking the messages as processed, OutboxKit will set the column to a `DateTime` in UTC, obtained from a [`TimeProvider`](https://learn.microsoft.com/en-us/dotnet/api/system.timeprovider) it gets from DI.
+Note that, if you use `WithUpdateProcessed`, you must use `WithProcessedAtColumn`, in order for the library to do its magic. When marking the messages as processed, OutboxKit will set the column to a `DateTime` in UTC, obtained from a [`TimeProvider`](https://learn.microsoft.com/en-us/dotnet/api/system.timeprovider) it gets from DI.
+
+`WithSelectForUpdateConcurrencyControl` and `WithAdvisoryLockConcurrencyControl` are two available options to handle concurrency control. In some scenarios, using advisory locks might provide performance benefits when compared to "SELECT ... FOR UPDATE", given it avoids locking the actual rows in the outbox table as they're being produced. As per [MySQL documentation](https://dev.mysql.com/doc/refman/8.0/en/locking-functions.html), usage of these kinds of locks is not safe when statement-based replication is in use. If nothing is explicitly set, by default, OutboxKit uses "SELECT ... FOR UPDATE".
 
 ## Multi-database
 

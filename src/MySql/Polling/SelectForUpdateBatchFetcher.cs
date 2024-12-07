@@ -6,7 +6,7 @@ using YakShaveFx.OutboxKit.MySql.Shared;
 namespace YakShaveFx.OutboxKit.MySql.Polling;
 
 // ReSharper disable once ClassNeverInstantiated.Global - automagically instantiated by DI
-internal sealed class BatchFetcher : IBatchFetcher
+internal sealed class SelectForUpdateBatchFetcher : IBatchFetcher
 {
     private delegate BatchContext BatchContextFactory(
         IReadOnlyCollection<IMessage> messages, MySqlConnection connection, MySqlTransaction tx);
@@ -20,7 +20,7 @@ internal sealed class BatchFetcher : IBatchFetcher
     private readonly MySqlDataSource _dataSource;
     private readonly BatchContextFactory _batchContextFactory;
 
-    public BatchFetcher(
+    public SelectForUpdateBatchFetcher(
         MySqlPollingSettings pollingSettings,
         TableConfiguration tableCfg,
         MySqlDataSource dataSource,
