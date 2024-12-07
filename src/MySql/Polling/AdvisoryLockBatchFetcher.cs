@@ -89,6 +89,7 @@ internal sealed class AdvisoryLockBatchFetcher : IBatchFetcher
 
             if (messages.Count == 0)
             {
+                await ReleaseLockAsync(connection, ct);
                 await connection.DisposeAsync();
                 return EmptyBatchContext.Instance;
             }
@@ -145,15 +146,11 @@ internal sealed class AdvisoryLockBatchFetcher : IBatchFetcher
                 {
                     // think if this is the best way to handle this (considering this shouldn't happen, probably it's good enough)
                     await tx.RollbackAsync(ct);
-                    await ReleaseLockAsync(connection, ct);
                     throw new InvalidOperationException("Failed to complete messages");
                 }
 
                 await tx.CommitAsync(ct);
             }
-
-            // this is a bit unnecessary, as it'll be released automatically when the connection is disposed
-            await ReleaseLockAsync(connection, ct);
         }
 
         public async Task<bool> HasNextAsync(CancellationToken ct)
@@ -169,7 +166,11 @@ internal sealed class AdvisoryLockBatchFetcher : IBatchFetcher
             };
         }
 
-        public ValueTask DisposeAsync() => connection.DisposeAsync();
+        public async ValueTask DisposeAsync()
+        {
+            await ReleaseLockAsync(connection, CancellationToken.None);
+            await connection.DisposeAsync();
+        }
     }
 
     private static MySqlCommand CreateDeleteCommand(

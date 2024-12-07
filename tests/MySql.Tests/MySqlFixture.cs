@@ -91,6 +91,8 @@ public sealed class MySqlFixture(IMessageSink diagnosticMessageSink) : IAsyncLif
         {
             Database = databaseName,
         }.ConnectionString);
+        
+        public string DatabaseName => databaseName;
 
         public async ValueTask DisposeAsync()
         {
@@ -114,6 +116,7 @@ public sealed class MySqlFixture(IMessageSink diagnosticMessageSink) : IAsyncLif
 public interface IDatabaseContext : IAsyncDisposable
 {
     MySqlDataSource DataSource { get; }
+    string DatabaseName { get; }
 }
 
 public record DefaultSchemaSettings
