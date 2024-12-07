@@ -132,6 +132,8 @@ internal sealed class AdvisoryLockBatchFetcher : IBatchFetcher
         CompleteCommandFactory completeCommandFactory)
         : IBatchContext
     {
+        private bool _lockReleased;
+        
         public IReadOnlyCollection<IMessage> Messages => messages;
 
         public async Task CompleteAsync(IReadOnlyCollection<IMessage> ok, CancellationToken ct)
@@ -150,6 +152,8 @@ internal sealed class AdvisoryLockBatchFetcher : IBatchFetcher
                 }
 
                 await tx.CommitAsync(ct);
+                await ReleaseLockAsync(connection, ct); // release immediately, to allow other fetchers to proceed
+                _lockReleased = true;
             }
         }
 
@@ -168,7 +172,10 @@ internal sealed class AdvisoryLockBatchFetcher : IBatchFetcher
 
         public async ValueTask DisposeAsync()
         {
-            await ReleaseLockAsync(connection, CancellationToken.None);
+            if (!_lockReleased)
+            {
+                await ReleaseLockAsync(connection, CancellationToken.None);
+            }
             await connection.DisposeAsync();
         }
     }
