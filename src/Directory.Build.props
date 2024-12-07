@@ -65,7 +65,7 @@
     <Target Name="MinVerPreRelease" AfterTargets="MinVer" Condition="'$(MinVerPreRelease)' != ''">
         <PropertyGroup>
             <!-- using nightly directly instead of MinVerPreRelease, because I want to include the DateTime instead of the height -->
-            <PackageVersion>$(MinVerMajor).$(MinVerMinor).$(MinVerPatch)-nightly-$([System.DateTime]::UtcNow.ToString(yyyyMMddhhmmss))</PackageVersion>
+            <PackageVersion>$(MinVerMajor).$(MinVerMinor).$(MinVerPatch)-nightly-$([System.DateTime]::UtcNow.ToString(yyyyMMddHHmmss))</PackageVersion>
             <PackageVersion Condition="'$(MinVerBuildMetadata)' != ''">$(PackageVersion)+$(MinVerBuildMetadata)</PackageVersion>
             <Version>$(PackageVersion)</Version>
         </PropertyGroup>
