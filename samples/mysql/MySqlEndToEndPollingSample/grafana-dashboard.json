@@ -101,7 +101,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.3.0",
+      "pluginVersion": "11.3.1",
       "targets": [
         {
           "datasource": {
@@ -203,7 +203,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.3.0",
+      "pluginVersion": "11.3.1",
       "targets": [
         {
           "datasource": {
@@ -305,19 +305,23 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.3.0",
+      "pluginVersion": "11.3.1",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
+          "disableTextWrap": false,
           "editorMode": "code",
-          "expr": "sum(irate(rabbitmq_producer_produced_messages_total{job=\"MySqlEndToEndPollingSample.Producer\"}[$__rate_interval]))",
+          "expr": "sum(irate(rabbitmq_producer_produced_messages_total{job=~\"MySqlEndToEndPollingSample.*Producer\"}[$__rate_interval]))",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
           "instant": false,
           "legendFormat": "producer",
           "range": true,
-          "refId": "A"
+          "refId": "A",
+          "useBackend": false
         }
       ],
       "title": "Messages produced per second (all producers)",
@@ -403,7 +407,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.3.0",
+      "pluginVersion": "11.3.1",
       "targets": [
         {
           "datasource": {
@@ -411,7 +415,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "irate(rabbitmq_producer_produced_messages_total{job=\"MySqlEndToEndPollingSample.Producer\"}[$__rate_interval])",
+          "expr": "irate(rabbitmq_producer_produced_messages_total{job=~\"MySqlEndToEndPollingSample.*Producer\"}[$__rate_interval])",
           "instant": false,
           "legendFormat": "producer {{instance}}",
           "range": true,
@@ -501,7 +505,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.3.0",
+      "pluginVersion": "11.3.1",
       "targets": [
         {
           "datasource": {
@@ -509,8 +513,8 @@
             "uid": "prometheus"
           },
           "disableTextWrap": false,
-          "editorMode": "builder",
-          "expr": "sum(irate(outbox_produced_batches_total{job=\"MySqlEndToEndPollingSample.Producer\"}[$__rate_interval]))",
+          "editorMode": "code",
+          "expr": "sum(irate(outbox_produced_batches_total{job=~\"MySqlEndToEndPollingSample.*Producer\"}[$__rate_interval]))",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "instant": false,
@@ -603,7 +607,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.3.0",
+      "pluginVersion": "11.3.1",
       "targets": [
         {
           "datasource": {
@@ -611,8 +615,8 @@
             "uid": "prometheus"
           },
           "disableTextWrap": false,
-          "editorMode": "builder",
-          "expr": "irate(outbox_produced_batches_total{job=\"MySqlEndToEndPollingSample.Producer\"}[$__rate_interval])",
+          "editorMode": "code",
+          "expr": "irate(outbox_produced_batches_total{job=~\"MySqlEndToEndPollingSample.*Producer\"}[$__rate_interval])",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "instant": false,
@@ -705,7 +709,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.3.0",
+      "pluginVersion": "11.3.1",
       "targets": [
         {
           "datasource": {
@@ -803,7 +807,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.3.0",
+      "pluginVersion": "11.3.1",
       "targets": [
         {
           "datasource": {
@@ -830,13 +834,13 @@
     "list": []
   },
   "time": {
-    "from": "now-5m",
+    "from": "now-1h",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "browser",
   "title": "throughput",
   "uid": "be2rtlvr0ia68a",
-  "version": 4,
+  "version": 5,
   "weekStart": ""
 }

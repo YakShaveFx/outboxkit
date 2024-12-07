@@ -1,14 +1,14 @@
 using System.Net.Mime;
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
 using RabbitMQ.Client;
 using YakShaveFx.OutboxKit.Core;
 using YakShaveFx.OutboxKit.MySql;
-
 using static YakShaveFx.OutboxKit.Core.OpenTelemetry.TraceContextHelpers;
 
-namespace MySqlEndToEndPollingSample.Producer;
+namespace MySqlEndToEndPollingSample.ProducerShared;
 
-internal sealed class RabbitMqProducer : IBatchProducer
+public sealed class RabbitMqProducer : IBatchProducer
 {
     private readonly IModel _model;
     private readonly RabbitMqSettings _settings;

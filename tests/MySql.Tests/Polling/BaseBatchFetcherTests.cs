@@ -5,6 +5,7 @@ using MySqlConnector;
 using YakShaveFx.OutboxKit.Core.Polling;
 using YakShaveFx.OutboxKit.MySql.Polling;
 using YakShaveFx.OutboxKit.MySql.Shared;
+using static YakShaveFx.OutboxKit.MySql.Tests.Polling.BatchFetcherTestHelpers;
 
 namespace YakShaveFx.OutboxKit.MySql.Tests.Polling;
 
@@ -160,25 +161,4 @@ internal class BaseBatchFetcherTests(MySqlFixture mySqlFixture, BatchFetcherFact
         MySqlConnection connection)
         => (await connection.QueryAsync<(long Id, DateTime? ProcessedAt)>(
             "SELECT id, processed_at FROM outbox_messages;")).ToArray();
-
-    private record Config(
-        DefaultSchemaSettings DefaultSchemaSettings,
-        MySqlPollingSettings MySqlPollingSettings,
-        TableConfiguration TableConfig);
-
-    private static Config GetConfigs(CompletionMode completionMode) =>
-        completionMode switch
-        {
-            CompletionMode.Delete => new Config(
-                Defaults.Delete.DefaultSchemaSettings,
-                Defaults.Delete.MySqlPollingSettings,
-                Defaults.Delete.TableConfig
-            ),
-            CompletionMode.Update => new Config(
-                Defaults.Update.DefaultSchemaSettings,
-                Defaults.Update.MySqlPollingSettings,
-                Defaults.Update.TableConfigWithProcessedAt
-            ),
-            _ => throw new ArgumentOutOfRangeException(nameof(completionMode))
-        };
 }

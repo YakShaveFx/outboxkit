@@ -1,9 +1,9 @@
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
 
-namespace MySqlEndToEndPollingSample.Producer;
+namespace MySqlEndToEndPollingSample.ProducerShared;
 
-internal class RabbitMqProducerMetrics : IDisposable
+public class RabbitMqProducerMetrics : IDisposable
 {
     public const string MeterName = "RabbitMqProducer";
     

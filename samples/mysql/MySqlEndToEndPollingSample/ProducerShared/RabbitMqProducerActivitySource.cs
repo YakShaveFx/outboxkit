@@ -2,12 +2,12 @@ using System.Diagnostics;
 using OpenTelemetry;
 using OpenTelemetry.Context.Propagation;
 
-namespace MySqlEndToEndPollingSample.Producer;
+namespace MySqlEndToEndPollingSample.ProducerShared;
 
 // note: new versions of RabbitMQ client library will eventually support OpenTelemetry out of the box,
 // but this version still needs manual instrumentation 
 
-internal static class RabbitMqProducerActivitySource
+public static class RabbitMqProducerActivitySource
 {
     public const string ActivitySourceName = nameof(RabbitMqProducer);
 

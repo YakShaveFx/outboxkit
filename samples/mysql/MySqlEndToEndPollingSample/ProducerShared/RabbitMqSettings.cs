@@ -1,4 +1,4 @@
-namespace MySqlEndToEndPollingSample.Producer;
+namespace MySqlEndToEndPollingSample.ProducerShared;
 
 public sealed class RabbitMqSettings
 {

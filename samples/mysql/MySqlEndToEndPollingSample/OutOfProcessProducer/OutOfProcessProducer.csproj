@@ -4,7 +4,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <RootNamespace>MySqlEndToEndPollingSample.Producer</RootNamespace>
+    <RootNamespace>MySqlEndToEndPollingSample.OutOfProcessProducer</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
@@ -14,9 +14,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Bogus" />
-    <PackageReference Include="Dapper" />
-    <PackageReference Include="MySqlConnector" />
     <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
     <PackageReference Include="OpenTelemetry.Extensions.Hosting" />
     <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" />
