@@ -29,7 +29,12 @@ builder.Services
     .AddSingleton<IBatchProducer, RabbitMqProducer>()
     .AddOutboxKit(kit =>
         kit
-            .WithMySqlPolling(p => p.WithConnectionString(connectionString)))
+            .WithMySqlPolling(p => 
+                p
+                    .WithConnectionString(connectionString)
+                    .WithBatchSize(builder.Configuration.GetValue<int?>("OutboxKit:Polling:BatchSize") ?? 100)
+                    .WithAdvisoryLockConcurrencyControl()
+                ))
     .AddSingleton(new Faker())
     .AddSingleton(TimeProvider.System)
     .AddHostedService<DbSetupHostedService>();

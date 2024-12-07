@@ -2,27 +2,34 @@ using Dapper;
 using FluentAssertions;
 using Microsoft.Extensions.Time.Testing;
 using MySqlConnector;
+using YakShaveFx.OutboxKit.Core.Polling;
 using YakShaveFx.OutboxKit.MySql.Polling;
 using YakShaveFx.OutboxKit.MySql.Shared;
 
 namespace YakShaveFx.OutboxKit.MySql.Tests.Polling;
 
-[Collection(MySqlCollection.Name)]
-public class BatchFetcherTests(MySqlFixture mySqlFixture)
+public enum CompletionMode
 {
-    public enum CompletionMode { Delete, Update }
-    
-    [Theory]
-    [InlineData(CompletionMode.Delete)]
-    [InlineData(CompletionMode.Update)]
+    Delete,
+    Update
+}
+
+internal delegate IBatchFetcher BatchFetcherFactory(
+    MySqlPollingSettings pollingSettings,
+    TableConfiguration tableCfg,
+    MySqlDataSource dataSource,
+    TimeProvider timeProvider);
+
+internal class BaseBatchFetcherTests(MySqlFixture mySqlFixture, BatchFetcherFactory sutFactory)
+{
     public async Task WhenTheOutboxIsPolledConcurrentlyThenTheSecondGetsBlocked(CompletionMode completionMode)
     {
         var (schemaSettings, mySqlSettings, tableConfig) = GetConfigs(completionMode);
         await using var dbCtx = await mySqlFixture.DbInit.WithDefaultSchema(schemaSettings).WithSeed().InitAsync();
         await using var connection = await dbCtx.DataSource.OpenConnectionAsync();
 
-        var sut1 = new BatchFetcher(mySqlSettings, tableConfig, dbCtx.DataSource, TimeProvider.System);
-        var sut2 = new BatchFetcher(mySqlSettings, tableConfig, dbCtx.DataSource, TimeProvider.System);
+        var sut1 = sutFactory(mySqlSettings, tableConfig, dbCtx.DataSource, TimeProvider.System);
+        var sut2 = sutFactory(mySqlSettings, tableConfig, dbCtx.DataSource, TimeProvider.System);
 
         // start fetching from the outbox concurrently
         // - first delay is to ensure the first query is executed before the second one
@@ -36,18 +43,15 @@ public class BatchFetcherTests(MySqlFixture mySqlFixture)
         batch1Task.Should().BeEquivalentTo(new
         {
             IsCompleted = true,
-            IsCompletedSuccessfully = true,
+            IsCompletedSuccessfully = true
         });
         batch2Task.Should().BeEquivalentTo(new
         {
             IsCompleted = false,
-            IsCompletedSuccessfully = false,
+            IsCompletedSuccessfully = false
         });
     }
 
-    [Theory]
-    [InlineData(CompletionMode.Delete)]
-    [InlineData(CompletionMode.Update)]
     public async Task WhenTheOutboxIsPolledConcurrentlyTheSecondIsUnblockedByTheFirstCompleting(
         CompletionMode completionMode)
     {
@@ -55,8 +59,8 @@ public class BatchFetcherTests(MySqlFixture mySqlFixture)
         await using var dbCtx = await mySqlFixture.DbInit.WithDefaultSchema(schemaSettings).WithSeed().InitAsync();
         await using var connection = await dbCtx.DataSource.OpenConnectionAsync();
 
-        var sut1 = new BatchFetcher(mySqlSettings, tableConfig, dbCtx.DataSource, TimeProvider.System);
-        var sut2 = new BatchFetcher(mySqlSettings, tableConfig, dbCtx.DataSource, TimeProvider.System);
+        var sut1 = sutFactory(mySqlSettings, tableConfig, dbCtx.DataSource, TimeProvider.System);
+        var sut2 = sutFactory(mySqlSettings, tableConfig, dbCtx.DataSource, TimeProvider.System);
 
         var batch1Task = sut1.FetchAndHoldAsync(CancellationToken.None);
         await Task.Delay(TimeSpan.FromSeconds(1));
@@ -70,15 +74,14 @@ public class BatchFetcherTests(MySqlFixture mySqlFixture)
         await batch2.CompleteAsync(batch2.Messages, CancellationToken.None);
         batch2.Messages.Cast<Message>().Should().AllSatisfy(m => m.Id.Should().BeInRange(6, 10));
     }
-
-    [Fact]
+    
     public async Task WhenABatchIsProducedThenTheRowsAreDeletedFromTheOutbox()
     {
         var (schemaSettings, mySqlSettings, tableConfig) = GetConfigs(CompletionMode.Delete);
         await using var dbCtx = await mySqlFixture.DbInit.WithDefaultSchema(schemaSettings).WithSeed().InitAsync();
         await using var connection = await dbCtx.DataSource.OpenConnectionAsync();
 
-        var sut = new BatchFetcher(mySqlSettings, tableConfig, dbCtx.DataSource, TimeProvider.System);
+        var sut = sutFactory(mySqlSettings, tableConfig, dbCtx.DataSource, TimeProvider.System);
 
         var messagesBefore = await FetchMessageIdsAsync(connection);
 
@@ -93,7 +96,7 @@ public class BatchFetcherTests(MySqlFixture mySqlFixture)
         messagesAfter.Should().NotContain(batch.Messages.Select(m => ((Message)m).Id));
     }
 
-    [Fact]
+
     public async Task WhenABatchIsProducedThenTheRowsAreUpdatedTheOutbox()
     {
         var (schemaSettings, mySqlSettings, tableConfig) = GetConfigs(CompletionMode.Update);
@@ -104,7 +107,7 @@ public class BatchFetcherTests(MySqlFixture mySqlFixture)
 
         await using var connection = await dbCtx.DataSource.OpenConnectionAsync();
 
-        var sut = new BatchFetcher(mySqlSettings, tableConfig, dbCtx.DataSource, fakeTimeProvider);
+        var sut = sutFactory(mySqlSettings, tableConfig, dbCtx.DataSource, fakeTimeProvider);
 
         var messagesBefore = await FetchMessageSummariesAsync(connection);
 
@@ -118,16 +121,13 @@ public class BatchFetcherTests(MySqlFixture mySqlFixture)
         messagesAfter.Should().Contain(batch.Messages.Select(m => (((Message)m).Id, (DateTime?)now.DateTime)));
     }
 
-    [Theory]
-    [InlineData(CompletionMode.Delete)]
-    [InlineData(CompletionMode.Update)]
     public async Task WhenABatchIsProducedButMessagesRemainThenHasNextShouldReturnTrue(CompletionMode completionMode)
     {
         var (schemaSettings, mySqlSettings, tableConfig) = GetConfigs(completionMode);
         await using var dbCtx = await mySqlFixture.DbInit.WithDefaultSchema(schemaSettings).WithSeed().InitAsync();
         await using var connection = await dbCtx.DataSource.OpenConnectionAsync();
 
-        var sut = new BatchFetcher(mySqlSettings, tableConfig, dbCtx.DataSource, TimeProvider.System);
+        var sut = sutFactory(mySqlSettings, tableConfig, dbCtx.DataSource, TimeProvider.System);
 
         var batchTask = sut.FetchAndHoldAsync(CancellationToken.None);
         await using var batch = await batchTask;
@@ -135,10 +135,7 @@ public class BatchFetcherTests(MySqlFixture mySqlFixture)
 
         (await batch.HasNextAsync(CancellationToken.None)).Should().BeTrue();
     }
-
-    [Theory]
-    [InlineData(CompletionMode.Delete)]
-    [InlineData(CompletionMode.Update)]
+    
     public async Task WhenABatchProducesAllRemainingMessagesThenHasNextShouldReturnFalse(CompletionMode completionMode)
     {
         var (schemaSettings, mySqlSettings, tableConfig) = GetConfigs(completionMode);
@@ -148,7 +145,7 @@ public class BatchFetcherTests(MySqlFixture mySqlFixture)
             .InitAsync();
         await using var connection = await dbCtx.DataSource.OpenConnectionAsync();
 
-        var sut = new BatchFetcher(mySqlSettings, tableConfig, dbCtx.DataSource, TimeProvider.System);
+        var sut = sutFactory(mySqlSettings, tableConfig, dbCtx.DataSource, TimeProvider.System);
 
         var batch = await sut.FetchAndHoldAsync(CancellationToken.None);
         await batch.CompleteAsync(batch.Messages, CancellationToken.None);
@@ -169,9 +166,8 @@ public class BatchFetcherTests(MySqlFixture mySqlFixture)
         MySqlPollingSettings MySqlPollingSettings,
         TableConfiguration TableConfig);
 
-    private static Config GetConfigs(CompletionMode completionMode)
-    {
-        return completionMode switch
+    private static Config GetConfigs(CompletionMode completionMode) =>
+        completionMode switch
         {
             CompletionMode.Delete => new Config(
                 Defaults.Delete.DefaultSchemaSettings,
@@ -185,5 +181,4 @@ public class BatchFetcherTests(MySqlFixture mySqlFixture)
             ),
             _ => throw new ArgumentOutOfRangeException(nameof(completionMode))
         };
-    }
 }

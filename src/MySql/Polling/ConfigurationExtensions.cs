@@ -88,6 +88,26 @@ public interface IMySqlPollingOutboxKitConfigurator
     /// <remarks>OutboxKit assumes the "processed at" column is a <see cref="DateTime"/> in UTC,
     /// and uses <see cref="TimeProvider"/> to obtain the time when completing and cleaning up the messages.</remarks>
     IMySqlPollingOutboxKitConfigurator WithUpdateProcessed(Action<IMySqlUpdateProcessedConfigurator>? configure);
+    
+    /// <summary>
+    /// Configures the outbox to use "SELECT ... FOR UPDATE" for concurrency control.
+    /// </summary>
+    /// <returns>The <see cref="IMySqlPollingOutboxKitConfigurator"/> instance for chaining calls.</returns>
+    /// <remarks>This is the default concurrency control if nothing is explicitly set.</remarks>
+    IMySqlPollingOutboxKitConfigurator WithSelectForUpdateConcurrencyControl();
+    
+    /// <summary>
+    /// <para>Configures the outbox to use advisory locks for concurrency control.</para>
+    /// <para>See <see href="https://dev.mysql.com/doc/refman/8.0/en/locking-functions.html"/> for more info about this type of locks</para>
+    /// </summary>
+    /// <returns>The <see cref="IMySqlPollingOutboxKitConfigurator"/> instance for chaining calls.</returns>
+    /// <remarks>
+    /// <para>In some scenarios, using advisory locks might provide performance benefits when compared to "SELECT ... FOR UPDATE",
+    /// given it avoids locking the actual rows in the outbox table as they're being produced.
+    /// Tests should be done to verify if there are benefits for a given scenario.</para>
+    /// <para>As per MySQL documentation, usage of these kinds of locks is not safe when statement-based replication is in use.</para>
+    /// </remarks>
+    IMySqlPollingOutboxKitConfigurator WithAdvisoryLockConcurrencyControl();
 }
 
 /// <summary>
@@ -174,6 +194,18 @@ internal sealed class PollingOutboxKitConfigurator : IPollingOutboxKitConfigurat
         };
         return this;
     }
+    
+    public IMySqlPollingOutboxKitConfigurator WithSelectForUpdateConcurrencyControl()
+    {
+        _settings = _settings with { ConcurrencyControl = ConcurrencyControl.SelectForUpdate };
+        return this;
+    }
+    
+    public IMySqlPollingOutboxKitConfigurator WithAdvisoryLockConcurrencyControl()
+    {
+        _settings = _settings with { ConcurrencyControl = ConcurrencyControl.AdvisoryLock };
+        return this;
+    }
 
     public void ConfigureServices(OutboxKey key, IServiceCollection services)
     {
@@ -205,11 +237,21 @@ internal sealed class PollingOutboxKitConfigurator : IPollingOutboxKitConfigurat
             .AddKeyedMySqlDataSource(key, _connectionString)
             .AddKeyedSingleton<IBatchFetcher>(
                 key,
-                (s, _) => new BatchFetcher(
-                    _settings,
-                    tableCfg,
-                    s.GetRequiredKeyedService<MySqlDataSource>(key),
-                    s.GetRequiredService<TimeProvider>()));
+                (s, _) =>
+                    _settings.ConcurrencyControl switch
+                    {
+                        ConcurrencyControl.SelectForUpdate => new SelectForUpdateBatchFetcher(
+                            _settings,
+                            tableCfg,
+                            s.GetRequiredKeyedService<MySqlDataSource>(key),
+                            s.GetRequiredService<TimeProvider>()),
+                        ConcurrencyControl.AdvisoryLock => new AdvisoryLockBatchFetcher(
+                            _settings,
+                            tableCfg,
+                            s.GetRequiredKeyedService<MySqlDataSource>(key),
+                            s.GetRequiredService<TimeProvider>()),
+                        _ => throw new InvalidOperationException($"Invalid concurrency control {_settings.ConcurrencyControl}")
+                    });
     }
 
     public CorePollingSettings GetCoreSettings() => _coreSettings;
@@ -238,10 +280,19 @@ internal sealed record MySqlPollingSettings
     public int BatchSize { get; init; } = 100;
 
     public CompletionMode CompletionMode { get; init; } = CompletionMode.Delete;
+    
+    public ConcurrencyControl ConcurrencyControl { get; init; } = ConcurrencyControl.SelectForUpdate;
+    
 }
 
 internal enum CompletionMode
 {
     Delete,
     Update
+}
+
+internal enum ConcurrencyControl
+{
+    SelectForUpdate,
+    AdvisoryLock
 }

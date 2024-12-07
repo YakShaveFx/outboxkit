@@ -13,6 +13,14 @@ services:
       - "--log.level=DEBUG"
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
+    deploy:
+      resources:
+        reservations:
+          memory: 256M
+          cpus: 0.5
+        limits:
+          memory: 768M
+          cpus: 2.0
 
   producer:
     build:
@@ -22,12 +30,14 @@ services:
     # ports:
     #   - "6001:8080"
     environment:
-      ConnectionStrings__Default: "server=mysql;port=3306;database=outboxkit_end_to_end_sample;user=user;password=pass;Maximum Pool Size=45;"
+      ConnectionStrings__Default: "server=mysql;port=3306;database=outboxkit_end_to_end_sample;user=user;password=pass;Maximum Pool Size=50;"
       OpenTelemetrySettings__Endpoint: "http://lgtm:4317"
       OTEL_METRIC_EXPORT_INTERVAL: 15000 # 15 seconds
+      OTEL_TRACES_SAMPLER: "always_off" # to reduce load on the lgtm container and the laptop 😅, comment to see traces
       RabbitMq__Host: "rabbitmq"
       RabbitMq__Port: 5672
       RabbitMq__Exchange: "outboxkit_end_to_end_sample"
+      OutboxKit__Polling__BatchSize: 200
     depends_on:
       - mysql
       - rabbitmq
@@ -38,7 +48,7 @@ services:
       - "traefik.http.routers.producer.entrypoints=producer"
       - "traefik.http.services.producer.loadbalancer.server.port=8080"
     deploy:
-      replicas: 3
+      replicas: 2
       resources:
         reservations:
             memory: 128M
@@ -57,6 +67,7 @@ services:
     environment:
       OpenTelemetrySettings__Endpoint: "http://lgtm:4317"
       OTEL_METRIC_EXPORT_INTERVAL: 15000 # 15 seconds
+      OTEL_TRACES_SAMPLER: "always_off" # to reduce load on the lgtm container and the laptop 😅, comment to see traces
       RabbitMq__Host: "rabbitmq"
       RabbitMq__Port: 5672
       RabbitMq__Exchange: "outboxkit_end_to_end_sample"
@@ -98,7 +109,7 @@ services:
           cpus: 0.5
         limits:
           memory: 768M
-          cpus: 3.0
+          cpus: 2.0
   
   lgtm:
     image: grafana/otel-lgtm
@@ -108,3 +119,11 @@ services:
       - "3000:3000" # ui
       - "4317:4317" # otlp gRPC
       - "4318:4318" # otlp HTTP
+    deploy:
+      resources:
+        reservations:
+          memory: 256M
+          cpus: 0.5
+        limits:
+          memory: 4GB
+          cpus: 1.5
