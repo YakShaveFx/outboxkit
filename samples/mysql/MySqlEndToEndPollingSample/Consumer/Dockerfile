@@ -11,12 +11,9 @@ COPY ["Directory.Packages.props", "."]
 RUN dotnet restore "samples/mysql/MySqlEndToEndPollingSample/Consumer/Consumer.csproj"
 COPY . .
 WORKDIR "/code/samples/mysql/MySqlEndToEndPollingSample/Consumer"
-RUN dotnet build "Consumer.csproj" -c Release -o /app/build
-
-FROM build AS publish
-RUN dotnet publish "Consumer.csproj" -c Release -o /app/publish
+RUN dotnet publish "Consumer.csproj" -c Release -o /app/publish # TODO figure out why --no-restore is not working
 
 FROM base AS final
 WORKDIR /app
-COPY --from=publish /app/publish .
+COPY --from=build /app/publish .
 ENTRYPOINT ["dotnet", "Consumer.dll"]
