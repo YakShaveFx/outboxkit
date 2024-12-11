@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Dapper;
-using FluentAssertions;
 using Microsoft.Extensions.Time.Testing;
 using MySqlConnector;
 using YakShaveFx.OutboxKit.MySql.CleanUp;
