@@ -52,7 +52,7 @@
     </PropertyGroup>
 
     <PropertyGroup Label="MinVer settings">
-        <MinVerMinimumMajorMinor>0.0</MinVerMinimumMajorMinor>
+        <MinVerMinimumMajorMinor>0.1</MinVerMinimumMajorMinor>
         <MinVerTagPrefix>v</MinVerTagPrefix>
         <MinVerDefaultPreReleaseIdentifiers>nightly</MinVerDefaultPreReleaseIdentifiers>
     </PropertyGroup>
