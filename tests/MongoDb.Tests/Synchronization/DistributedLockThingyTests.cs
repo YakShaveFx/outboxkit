@@ -81,13 +81,13 @@ public class DistributedLockThingyTests(MongoDbFixture fixture)
 
         // give some time for the first lock to acquire
         await acquireLock1Tcs.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        
+
         // start acquiring second lock
         var secondLockTask = sut2.AcquireAsync(lockDef.WithDifferentOwner().WithoutOnLockLost(), None);
 
         // give sut2 some time to start acquiring the lock (subscribe to change stream)
         await Task.Delay(TimeSpan.FromSeconds(5));
-        
+
         // release first lock
         releaseLock1Tcs.SetResult();
 
@@ -245,6 +245,53 @@ public class DistributedLockThingyTests(MongoDbFixture fixture)
         lockLostCalled.Should().BeFalse();
         lockExists.Should().BeTrue();
     }
+    
+    /*
+     * The tests
+     * - WhenAcquiringAndReleasingLockThenItsReleased
+     * - WhenAcquiringAndReleasingLockWithChangeStreamsEnabledThenItsReleased
+     * Were added because of a bug where the lock was disposed, but the keep alive kept running, reacquiring the lock.
+     * This is why they might feel very specific, as they're testing the conditions that caused the bug.
+     */
+    
+    [Fact]
+    public async Task WhenAcquiringAndReleasingLockThenItsReleased()
+    {
+        var database = GetDatabase();
+        var settings = new DistributedLockSettings { ChangeStreamsEnabled = false };
+        var timeProvider = TimeProvider.System;
+        var sut = new DistributedLockThingy(settings, database, timeProvider, _logger);
+        var lockDef = CreateLockDefinition() with { Duration = TimeSpan.FromSeconds(1) };
+
+        await using var @lock = await sut.AcquireAsync(lockDef, None);
+        await Task.Delay(TimeSpan.FromSeconds(1)); // give it a bit of time for the keep alive to kick in
+        await @lock.DisposeAsync();
+        // give it a bit of time for keep alive to run (if not cancelled)
+        await Task.Delay(TimeSpan.FromSeconds(5)); 
+
+        var doc = await GetLockDocument(lockDef.Id);
+        doc.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task WhenAcquiringAndReleasingLockWithChangeStreamsEnabledThenItsReleased()
+    {
+        var database = GetDatabase();
+        var settings = new DistributedLockSettings { ChangeStreamsEnabled = true };
+        var timeProvider = new FakeTimeProvider();
+        var sut = new DistributedLockThingy(settings, database, timeProvider, _logger);
+        var lockDef = CreateLockDefinition();
+
+        await using var @lock = await sut.AcquireAsync(lockDef, None);
+        await Task.Delay(TimeSpan.FromSeconds(1)); // give it a bit of time for the keep alive to kick in
+        await @lock.DisposeAsync();
+        // give it a bit of time for change streams to be signaled and the code to run (if not cancelled)
+        // (using FakeTimeProvider but not touching it, so we see the change streams in action, instead of the delay)
+        await Task.Delay(TimeSpan.FromSeconds(5));
+
+        var doc = await GetLockDocument(lockDef.Id);
+        doc.Should().BeNull();
+    }
 
     // need to delete using a different client, otherwise it won't trigger change streams
     private async Task<DeleteResult> DeleteLock(DistributedLockDefinition lockDef)
@@ -257,7 +304,7 @@ public class DistributedLockThingyTests(MongoDbFixture fixture)
             .GetCollection()
             .Find(Builders<DistributedLockDocument>.Filter.Eq(d => d.Id, lockDef.Id))
             .AnyAsync();
-    
+
     private async Task<ReplaceOneResult> ReplaceOwner(DistributedLockDefinition lockDef)
         => await GetDatabase()
             .GetCollection()

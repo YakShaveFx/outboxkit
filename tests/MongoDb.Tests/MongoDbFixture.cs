@@ -24,13 +24,8 @@ public sealed class MongoDbFixture : IAsyncLifetime
         // need replica set for change streams
         .WithReplicaSet()
         .Build();
-
-    // besides setting the replica set, we also need to use the direct connection option,
-    // otherwise the client will try to connect to the advertised host and port
-    // which don't match what Testcontainers maps (to avoid port conflicts)
-    // (note: it will be fixed in a future release of Testcontainers MongoDB integration,
-    // in which case we'll be able to return the _container connection string directly)
-    public string ConnectionString => $"{_container.GetConnectionString()}?replicaSet=rs0&directConnection=true";
+    
+    public string ConnectionString => _container.GetConnectionString();
 
     public async Task InitializeAsync() => await _container.StartAsync();
 

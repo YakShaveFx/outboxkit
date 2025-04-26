@@ -47,6 +47,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "mongodb", "mongodb", "{1148
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MongoDbPollingSample", "samples\mongodb\MongoDbPollingSample\MongoDbPollingSample.csproj", "{C097DEE3-EDF3-4CD4-A7F2-DD4796A41874}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MongoDbMultiDbPollingSample", "samples\mongodb\MongoDbMultiDbPollingSample\MongoDbMultiDbPollingSample.csproj", "{F5C31DA0-FE7B-4471-884E-E8BEE095ED6D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -116,6 +118,10 @@ Global
 		{C097DEE3-EDF3-4CD4-A7F2-DD4796A41874}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C097DEE3-EDF3-4CD4-A7F2-DD4796A41874}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C097DEE3-EDF3-4CD4-A7F2-DD4796A41874}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F5C31DA0-FE7B-4471-884E-E8BEE095ED6D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F5C31DA0-FE7B-4471-884E-E8BEE095ED6D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F5C31DA0-FE7B-4471-884E-E8BEE095ED6D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F5C31DA0-FE7B-4471-884E-E8BEE095ED6D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{9E17490D-8407-441F-AF33-620EAD39C9AD} = {E1748C96-94CD-479F-BF71-585EB56C9FBF}
@@ -136,5 +142,6 @@ Global
 		{2B7C9828-7A30-4B91-A0AC-5D82820B224D} = {7DDB9CD3-11D6-4036-B0F5-19315D4FA1DD}
 		{114820B8-6912-4F74-85F6-EB25CAE48BF9} = {2C240B41-C6C9-4921-9139-ECB2AA468316}
 		{C097DEE3-EDF3-4CD4-A7F2-DD4796A41874} = {114820B8-6912-4F74-85F6-EB25CAE48BF9}
+		{F5C31DA0-FE7B-4471-884E-E8BEE095ED6D} = {114820B8-6912-4F74-85F6-EB25CAE48BF9}
 	EndGlobalSection
 EndGlobal

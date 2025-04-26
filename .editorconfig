@@ -63,7 +63,7 @@ csharp_style_expression_bodied_local_functions = true:suggestion
 # misc
 csharp_prefer_static_local_function = true:suggestion
 csharp_using_directive_placement = outside_namespace:suggestion
-csharp_prefer_braces = true:suggestion
+csharp_prefer_braces = true:none
 csharp_prefer_static_local_function = false:suggestion
 csharp_style_prefer_switch_expression = true:suggestion
 csharp_style_namespace_declarations = file_scoped
