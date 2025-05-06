@@ -118,3 +118,9 @@ You'll notice we're using `GetRequiredKeyedService` instead of `GetRequiredServi
 As discussed in [Core/Producing messages](/core/producing-messages), the `IBatchProducer` `ProduceAsync` method receives an `OutboxKey`, composed by a provider key (`"mongodb_polling"` in this case) and a client key, which is what you passed to `WithMongoDbPolling`. If you only have one outbox and don't set the key, you'll get the `string` `"default"`.
 
 The `k` parameter shown in the example above in the `WithDatabaseFactory` method is also the aforementioned `OutboxKey`, and it's passed in case it's useful to resolve the `IMongoDatabase` instance. If you don't need it, you can just ignore it.
+
+## Important notes
+
+- Due to the need to implement a distributed locking mechanism, not just using something provided by the database itself, makes the likelihood of bugs in this provider higher than in others. Hopefully it's implemented well, but if you find any issues, please report them.
+- For simplicity and testability, the distributed locking mechanism uses the date/time of the machine running the application to determine lock expiration. For this reason, when running multiple instances of the application, it's important that the clocks are in sync, otherwise there might be unexpected behavior. Other approaches might be considered, but at this point, it seemed an acceptable approach.
+- This implementation of the MongoDB polling provider was designed exclusively to be used with a primary database instance. It wasn't thought or tested to be used with sharded clusters.
