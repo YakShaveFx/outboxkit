@@ -31,7 +31,7 @@ public class DistributedLockThingyTests(MongoDbFixture fixture)
     }
 
     [Fact]
-    public async Task WhenAcquiringUnavailableLockTheItWaitsForExpiration()
+    public async Task WhenAcquiringUnavailableLockThenItWaitsForExpiration()
     {
         var settings = new DistributedLockSettings { ChangeStreamsEnabled = false };
         // so we can control time separately and test expiration
@@ -60,7 +60,7 @@ public class DistributedLockThingyTests(MongoDbFixture fixture)
     }
 
     [Fact]
-    public async Task WhenAcquiringUnavailableLockTheItWaitsForChangeStreamsNotification()
+    public async Task WhenAcquiringUnavailableLockThenItWaitsForChangeStreamsNotification()
     {
         var settings = new DistributedLockSettings { ChangeStreamsEnabled = true };
         var timeProvider = new FakeTimeProvider();
