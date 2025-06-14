@@ -6,6 +6,7 @@ namespace YakShaveFx.OutboxKit.MySql.Tests.Polling;
 
 public class AdvisoryLockBatchFetcherTests(MySqlFixture mySqlFixture)
 {
+    private readonly CancellationToken _ct = TestContext.Current.CancellationToken;
     private readonly BaseBatchFetcherTests _baseTests = new(
         mySqlFixture,
         (pollingSettings, tableCfg, dataSource, timeProvider) =>
@@ -55,7 +56,7 @@ public class AdvisoryLockBatchFetcherTests(MySqlFixture mySqlFixture)
             .WithDefaultSchema(schemaSettings)
             .WithSeed(seed ? 10 : 0)
             .InitAsync();
-        await using var connection = await dbCtx.DataSource.OpenConnectionAsync();
+        await using var connection = await dbCtx.DataSource.OpenConnectionAsync(_ct);
 
         var sut = new AdvisoryLockBatchFetcher(mySqlSettings, tableConfig, dbCtx.DataSource, TimeProvider.System);
 

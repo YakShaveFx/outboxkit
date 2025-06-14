@@ -8,15 +8,12 @@ namespace YakShaveFx.OutboxKit.MongoDb.Tests.CleanUp;
 public class CleanerTests
 {
     private readonly string _databaseName = $"test_{Guid.NewGuid():N}";
-    private readonly MongoDbFixture _fixture;
     private readonly IMongoDatabase _db;
+    private readonly CancellationToken _ct = TestContext.Current.CancellationToken;
 
     public CleanerTests(MongoDbFixture fixture)
-    {
-        _fixture = fixture;
-        _db = new MongoClient(fixture.ConnectionString).GetDatabase(_databaseName);
-    }
-    
+        => _db = new MongoClient(fixture.ConnectionString).GetDatabase(_databaseName);
+
     [Theory]
     [InlineData(10, 0, 0)]
     [InlineData(10, 5, 5)]
@@ -51,7 +48,7 @@ public class CleanerTests
                 TraceContext = null
             })
             .ToArray();
-        await collection.InsertManyAsync(messages);
+        await collection.InsertManyAsync(messages, cancellationToken: _ct);
 
         var sut = new Cleaner<TestMessageWithProcessedAt>(
             cleanupSettings,
