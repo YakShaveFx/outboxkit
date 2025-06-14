@@ -6,6 +6,10 @@ outline: deep
 
 To use OutboxKit with the MongoDB polling provider (and others as well), you'll need to choose between two paths: accept the library defaults, making your infra match them, or make use of the library's flexibility to adapt to your existing infrastructure.
 
+::: tip
+Don't skip the [important notes](#important-notes) section at the end of the page.
+:::
+
 ## Using the defaults
 
 In the box you'll find the `Message` record, which looks something like this:
