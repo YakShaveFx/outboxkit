@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <AssemblyName>YakShaveFx.OutboxKit.PostgreSql</AssemblyName>
+        <RootNamespace>YakShaveFx.OutboxKit.PostgreSql</RootNamespace>
+        <PackageId>YakShaveFx.OutboxKit.PostgreSql</PackageId>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions"/>
+        <PackageReference Include="Npgsql" />
+        <PackageReference Include="Npgsql.DependencyInjection" />
+        
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Core\Core.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="PostgreSql.Tests"/>
+    </ItemGroup>
+</Project>

@@ -45,7 +45,7 @@ public class BatchFetcherTests
 
         // start fetching from the outbox concurrently
         // - first delay is to ensure the first query is executed before the second one
-        // - second delay is to give the second query time to block
+        // - second delay is to give the second query time to return an empty batch
         // (if there's a better way to test this, I'm all ears 😅)
         var batch1Task = sut1.FetchAndHoldAsync(CancellationToken.None);
         await Task.Delay(TimeSpan.FromSeconds(1), _ct);
