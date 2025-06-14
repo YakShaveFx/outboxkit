@@ -1,5 +1,4 @@
 using Dapper;
-using FluentAssertions;
 using Microsoft.Extensions.Time.Testing;
 using MySqlConnector;
 using YakShaveFx.OutboxKit.Core.Polling;

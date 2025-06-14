@@ -86,6 +86,14 @@ export default defineConfig({
         ],
       },
       {
+        text: "MongoDB",
+        collapsed: true,
+        items: [
+          { text: "MongoDB provider overview", link: "/mongodb/overview" },
+          { text: "Polling", link: "/mongodb/polling" },
+        ],
+      },
+      {
         text: "Observability",
         collapsed: true,
         items: [

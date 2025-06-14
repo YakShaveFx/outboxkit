@@ -2,6 +2,7 @@
 <Project>
     <PropertyGroup>
         <TargetFramework>net8.0</TargetFramework>
+        <LangVersion>latest</LangVersion>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <WarningsAsErrors>nullable</WarningsAsErrors>
@@ -52,7 +53,7 @@
     </PropertyGroup>
 
     <PropertyGroup Label="MinVer settings">
-        <MinVerMinimumMajorMinor>0.0</MinVerMinimumMajorMinor>
+        <MinVerMinimumMajorMinor>0.1</MinVerMinimumMajorMinor>
         <MinVerTagPrefix>v</MinVerTagPrefix>
         <MinVerDefaultPreReleaseIdentifiers>nightly</MinVerDefaultPreReleaseIdentifiers>
     </PropertyGroup>

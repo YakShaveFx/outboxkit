@@ -1,5 +1,4 @@
 using Dapper;
-using FluentAssertions;
 using YakShaveFx.OutboxKit.MySql.Polling;
 using static YakShaveFx.OutboxKit.MySql.Tests.Polling.BatchFetcherTestHelpers;
 
