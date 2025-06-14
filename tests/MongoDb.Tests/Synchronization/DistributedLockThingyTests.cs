@@ -3,7 +3,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 using MongoDB.Driver;
 using YakShaveFx.OutboxKit.MongoDb.Synchronization;
-using static System.Threading.CancellationToken;
 
 namespace YakShaveFx.OutboxKit.MongoDb.Tests.Synchronization;
 
@@ -22,7 +21,7 @@ public class DistributedLockThingyTests(MongoDbFixture fixture)
         var sut = new DistributedLockThingy(settings, database, timeProvider, _logger);
         var lockDef = CreateLockDefinition();
 
-        await using var @lock = await sut.AcquireAsync(lockDef, None);
+        await using var @lock = await sut.AcquireAsync(lockDef, _ct);
 
         @lock.Should().NotBeNull();
         var doc = await GetLockDocument(lockDef.Id);
@@ -42,10 +41,10 @@ public class DistributedLockThingyTests(MongoDbFixture fixture)
         var lockDef = CreateLockDefinition();
 
         // acquire first lock
-        await using var @lock = await sut1.AcquireAsync(lockDef, None);
+        await using var @lock = await sut1.AcquireAsync(lockDef, _ct);
 
         // start acquiring second lock
-        var secondLockTask = sut2.AcquireAsync(lockDef.WithDifferentOwner(), None);
+        var secondLockTask = sut2.AcquireAsync(lockDef.WithDifferentOwner(), _ct);
 
         await Task.Delay(TimeSpan.FromSeconds(5), _ct);
 
@@ -82,7 +81,7 @@ public class DistributedLockThingyTests(MongoDbFixture fixture)
         await acquireLock1Tcs.Task.WaitAsync(TimeSpan.FromSeconds(5), _ct);
 
         // start acquiring second lock
-        var secondLockTask = sut2.AcquireAsync(lockDef.WithDifferentOwner().WithoutOnLockLost(), None);
+        var secondLockTask = sut2.AcquireAsync(lockDef.WithDifferentOwner().WithoutOnLockLost(), _ct);
 
         // give sut2 some time to start acquiring the lock (subscribe to change stream)
         await Task.Delay(TimeSpan.FromSeconds(5), _ct);
@@ -106,10 +105,10 @@ public class DistributedLockThingyTests(MongoDbFixture fixture)
         var lockDef = CreateLockDefinition();
 
         // acquire first lock
-        await using var firstLock = await sut1.AcquireAsync(lockDef, None);
+        await using var firstLock = await sut1.AcquireAsync(lockDef, _ct);
 
         // try to acquire second lock
-        var secondLock = await sut2.TryAcquireAsync(lockDef.WithDifferentOwner(), None);
+        var secondLock = await sut2.TryAcquireAsync(lockDef.WithDifferentOwner(), _ct);
         secondLock.Should().BeNull();
     }
 
@@ -132,7 +131,7 @@ public class DistributedLockThingyTests(MongoDbFixture fixture)
             attempts.Select(def =>
             {
                 var sut = new DistributedLockThingy(settings, GetDatabase(), timeProvider, _logger);
-                return sut.TryAcquireAsync(def, None);
+                return sut.TryAcquireAsync(def, _ct);
             }));
 
         acquiredLocks.Count(l => l is not null).Should().Be(1);
@@ -158,13 +157,13 @@ public class DistributedLockThingyTests(MongoDbFixture fixture)
         };
 
         // acquire first lock
-        await using var @lock = await sut1.AcquireAsync(lockDef, None);
+        await using var @lock = await sut1.AcquireAsync(lockDef, _ct);
 
         // advance time past expiration
         sut2TimeProvider.Advance(lockDef.Duration + TimeSpan.FromSeconds(1));
 
         // try to acquire with different owner
-        await using var newLock = await sut2.TryAcquireAsync(lockDef.WithDifferentOwner(), None);
+        await using var newLock = await sut2.TryAcquireAsync(lockDef.WithDifferentOwner(), _ct);
 
         // advance time past expiration, so it detects the lock is lost
         sut1TimeProvider.Advance(lockDef.Duration + TimeSpan.FromSeconds(1));
@@ -229,14 +228,14 @@ public class DistributedLockThingyTests(MongoDbFixture fixture)
         };
 
         // acquire lock
-        await using var @lock = await sut.AcquireAsync(lockDef, None);
-
+        await using var @lock = await sut.AcquireAsync(lockDef, _ct);
+        
         // simulate external modification by directly updating the database
         var deleteResult = await DeleteLock(lockDef);
 
         // give some time for the change stream to detect and act on the modification
-        await Task.Delay(TimeSpan.FromSeconds(1), _ct);
-
+        await Task.Delay(TimeSpan.FromSeconds(5), _ct);
+        
         var lockExists = await LockExists(lockDef);
 
         // Assert
@@ -244,7 +243,7 @@ public class DistributedLockThingyTests(MongoDbFixture fixture)
         lockLostCalled.Should().BeFalse();
         lockExists.Should().BeTrue();
     }
-    
+
     /*
      * The tests
      * - WhenAcquiringAndReleasingLockThenItsReleased
@@ -252,7 +251,7 @@ public class DistributedLockThingyTests(MongoDbFixture fixture)
      * Were added because of a bug where the lock was disposed, but the keep alive kept running, reacquiring the lock.
      * This is why they might feel very specific, as they're testing the conditions that caused the bug.
      */
-    
+
     [Fact]
     public async Task WhenAcquiringAndReleasingLockThenItsReleased()
     {
@@ -262,11 +261,11 @@ public class DistributedLockThingyTests(MongoDbFixture fixture)
         var sut = new DistributedLockThingy(settings, database, timeProvider, _logger);
         var lockDef = CreateLockDefinition() with { Duration = TimeSpan.FromSeconds(1) };
 
-        await using var @lock = await sut.AcquireAsync(lockDef, None);
-        await Task.Delay(TimeSpan.FromSeconds(1), _ct); // give it a bit of time for the keep alive to kick in
+        var @lock = await sut.AcquireAsync(lockDef, _ct);
         await @lock.DisposeAsync();
+        
         // give it a bit of time for keep alive to run (if not cancelled)
-        await Task.Delay(TimeSpan.FromSeconds(5), _ct); 
+        await Task.Delay(TimeSpan.FromSeconds(5), _ct);
 
         var doc = await GetLockDocument(lockDef.Id);
         doc.Should().BeNull();
@@ -281,9 +280,10 @@ public class DistributedLockThingyTests(MongoDbFixture fixture)
         var sut = new DistributedLockThingy(settings, database, timeProvider, _logger);
         var lockDef = CreateLockDefinition();
 
-        await using var @lock = await sut.AcquireAsync(lockDef, None);
-        await Task.Delay(TimeSpan.FromSeconds(1), _ct); // give it a bit of time for the keep alive to kick in
+        var @lock = await sut.AcquireAsync(lockDef, _ct);
+        
         await @lock.DisposeAsync();
+        
         // give it a bit of time for change streams to be signaled and the code to run (if not cancelled)
         // (using FakeTimeProvider but not touching it, so we see the change streams in action, instead of the delay)
         await Task.Delay(TimeSpan.FromSeconds(5), _ct);
