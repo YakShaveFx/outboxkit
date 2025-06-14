@@ -4,8 +4,6 @@
         <RootNamespace>YakShaveFx.OutboxKit.MongoDb.Tests</RootNamespace>
         <IsPackable>false</IsPackable>
         <IsTestProject>true</IsTestProject>
-        <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
-        <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
     </PropertyGroup>
 
     <ItemGroup>
