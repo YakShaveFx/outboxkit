@@ -15,7 +15,6 @@ public enum CompletionMode
     Update
 }
 
-[Collection(MongoDbCollection.Name)]
 public class BatchFetcherTests
 {
     private readonly MongoDbFixture _fixture;

@@ -2,7 +2,6 @@ using YakShaveFx.OutboxKit.MySql.Polling;
 
 namespace YakShaveFx.OutboxKit.MySql.Tests.Polling;
 
-[Collection(MySqlCollection.Name)]
 public class SelectForUpdateBatchFetcherTests(MySqlFixture mySqlFixture)
 {
     private readonly BaseBatchFetcherTests _baseTests = new(

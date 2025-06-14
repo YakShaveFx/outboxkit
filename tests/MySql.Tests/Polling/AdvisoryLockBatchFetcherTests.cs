@@ -4,7 +4,6 @@ using static YakShaveFx.OutboxKit.MySql.Tests.Polling.BatchFetcherTestHelpers;
 
 namespace YakShaveFx.OutboxKit.MySql.Tests.Polling;
 
-[Collection(MySqlCollection.Name)]
 public class AdvisoryLockBatchFetcherTests(MySqlFixture mySqlFixture)
 {
     private readonly BaseBatchFetcherTests _baseTests = new(

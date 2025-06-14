@@ -7,7 +7,6 @@ using static System.Threading.CancellationToken;
 
 namespace YakShaveFx.OutboxKit.MongoDb.Tests.Synchronization;
 
-[Collection(MongoDbCollection.Name)]
 public class DistributedLockThingyTests(MongoDbFixture fixture)
 {
     private readonly ILogger<DistributedLockThingy> _logger = NullLogger<DistributedLockThingy>.Instance;
@@ -214,7 +213,7 @@ public class DistributedLockThingyTests(MongoDbFixture fixture)
     }
 
     [Fact]
-    public async Task WhenLockIsDeletedExterallyThenItsDetectedByChangeStreamsAndReacquired()
+    public async Task WhenLockIsDeletedExternallyThenItsDetectedByChangeStreamsAndReacquired()
     {
         var settings = new DistributedLockSettings { ChangeStreamsEnabled = true };
         var timeProvider = new FakeTimeProvider();

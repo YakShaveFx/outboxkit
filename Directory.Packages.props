@@ -33,10 +33,6 @@
     <PackageVersion Include="Testcontainers" Version="4.4.0" />
     <PackageVersion Include="Testcontainers.MySql" Version="4.4.0" />
     <PackageVersion Include="Testcontainers.MongoDb" Version="4.4.0" />
-    <PackageVersion Include="xunit" Version="2.9.3" />
-    <PackageVersion Include="xunit.runner.visualstudio" Version="3.0.2">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageVersion>
+    <PackageVersion Include="xunit.v3" Version="2.0.3" />
   </ItemGroup>
 </Project>

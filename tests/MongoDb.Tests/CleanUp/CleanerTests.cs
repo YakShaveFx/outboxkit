@@ -5,7 +5,6 @@ using YakShaveFx.OutboxKit.MongoDb.CleanUp;
 
 namespace YakShaveFx.OutboxKit.MongoDb.Tests.CleanUp;
 
-[Collection(MongoDbCollection.Name)]
 public class CleanerTests
 {
     private readonly string _databaseName = $"test_{Guid.NewGuid():N}";

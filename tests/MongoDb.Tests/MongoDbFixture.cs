@@ -1,18 +1,9 @@
 using Testcontainers.MongoDb;
+using YakShaveFx.OutboxKit.MongoDb.Tests;
+
+[assembly: AssemblyFixture(typeof(MongoDbFixture))]
 
 namespace YakShaveFx.OutboxKit.MongoDb.Tests;
-
-// in xunit 3, we'll be able to use assembly fixtures to share the container across all tests
-// until then, we'll have to use a collection fixture (though this means the tests don't run in parallel)
-[CollectionDefinition(Name)]
-public sealed class MongoDbCollection : ICollectionFixture<MongoDbFixture>
-{
-    public const string Name = "MongoDB collection";
-
-    // This class has no code, and is never created. Its purpose is simply
-    // to be the place to apply [CollectionDefinition] and all the
-    // ICollectionFixture<> interfaces.
-}
 
 // ReSharper disable once ClassNeverInstantiated.Global - it's instantiated by xUnit
 public sealed class MongoDbFixture : IAsyncLifetime
@@ -27,7 +18,7 @@ public sealed class MongoDbFixture : IAsyncLifetime
     
     public string ConnectionString => _container.GetConnectionString();
 
-    public async Task InitializeAsync() => await _container.StartAsync();
+    public async ValueTask InitializeAsync() => await _container.StartAsync();
 
-    public async Task DisposeAsync() => await _container.DisposeAsync();
+    public async ValueTask DisposeAsync() => await _container.DisposeAsync();
 }

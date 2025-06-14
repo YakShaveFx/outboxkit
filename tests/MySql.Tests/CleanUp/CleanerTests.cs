@@ -6,7 +6,6 @@ using YakShaveFx.OutboxKit.MySql.CleanUp;
 
 namespace YakShaveFx.OutboxKit.MySql.Tests.CleanUp;
 
-[Collection(MySqlCollection.Name)]
 public class CleanerTests(MySqlFixture mySqlFixture)
 {
     [Theory]
