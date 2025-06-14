@@ -2,23 +2,13 @@ using System.Text.Json;
 using Dapper;
 using MySqlConnector;
 using Testcontainers.MySql;
-using Xunit.Abstractions;
 using Xunit.Sdk;
+using Xunit.v3;
+using YakShaveFx.OutboxKit.MySql.Tests;
+
+[assembly: AssemblyFixture(typeof(MySqlFixture))]
 
 namespace YakShaveFx.OutboxKit.MySql.Tests;
-
-// in xunit 3, we'll be able to use assembly fixtures to share the container across all tests
-// until then, we'll have to use a collection fixture (though this means the tests don't run in parallel)
-
-[CollectionDefinition(Name)]
-public sealed class MySqlCollection : ICollectionFixture<MySqlFixture>
-{
-    public const string Name = "MySQL collection";
-
-    // This class has no code, and is never created. Its purpose is simply
-    // to be the place to apply [CollectionDefinition] and all the
-    // ICollectionFixture<> interfaces.
-}
 
 // ReSharper disable once ClassNeverInstantiated.Global - it's instantiated by xUnit
 public sealed class MySqlFixture(IMessageSink diagnosticMessageSink) : IAsyncLifetime
@@ -32,9 +22,9 @@ public sealed class MySqlFixture(IMessageSink diagnosticMessageSink) : IAsyncLif
     public IDatabaseContextInitializer DbInit
         => new DatabaseContextInitializer(_container.GetConnectionString(), diagnosticMessageSink);
 
-    public Task InitializeAsync() => _container.StartAsync();
+    public async ValueTask InitializeAsync() => await _container.StartAsync();
 
-    public async Task DisposeAsync() => await _container.DisposeAsync();
+    public async ValueTask DisposeAsync() => await _container.DisposeAsync();
 
     private sealed class DatabaseContextInitializer(string originalConnectionString, IMessageSink diagnosticMessageSink)
         : IDatabaseContextInitializer

@@ -14,6 +14,7 @@ public class CleanUpBackgroundServiceTests
     private readonly FakeTimeProvider _timeProvider = new();
     private readonly CoreCleanUpSettings _settings = new();
     private readonly CleanerMetrics _metrics = new(CreateMeterFactoryStub());
+    private readonly CancellationToken _ct = TestContext.Current.CancellationToken;
 
     [Fact]
     public async Task WhenServiceStartsTheCleanerIsInvoked()
@@ -28,7 +29,7 @@ public class CleanUpBackgroundServiceTests
             Logger);
         
         await sut.StartAsync(CancellationToken.None);
-        await Task.Delay(TimeSpan.FromMilliseconds(100)); // give it a bit to run and block
+        await Task.Delay(TimeSpan.FromMilliseconds(100), _ct); // give it a bit to run and block
         
         await cleanerSpy.Received(1).CleanAsync(Arg.Any<CancellationToken>());
     }
@@ -46,11 +47,11 @@ public class CleanUpBackgroundServiceTests
             Logger);
         
         await sut.StartAsync(CancellationToken.None);
-        await Task.Delay(TimeSpan.FromMilliseconds(100)); // give it a bit to run and block
+        await Task.Delay(TimeSpan.FromMilliseconds(100), _ct); // give it a bit to run and block
         cleanerSpy.ClearReceivedCalls(); // ignore startup call
 
         _timeProvider.Advance(_settings.CleanUpInterval - TimeSpan.FromMilliseconds(1));
-        await Task.Delay(TimeSpan.FromMilliseconds(100)); // give it a bit to run again
+        await Task.Delay(TimeSpan.FromMilliseconds(100), _ct); // give it a bit to run again
 
         await cleanerSpy.Received(0).CleanAsync(Arg.Any<CancellationToken>());
     }
@@ -68,11 +69,11 @@ public class CleanUpBackgroundServiceTests
             Logger);
         
         await sut.StartAsync(CancellationToken.None);
-        await Task.Delay(TimeSpan.FromMilliseconds(100)); // give it a bit to run and block
+        await Task.Delay(TimeSpan.FromMilliseconds(100), _ct); // give it a bit to run and block
         cleanerSpy.ClearReceivedCalls(); // ignore startup call
 
         _timeProvider.Advance(_settings.CleanUpInterval);
-        await Task.Delay(TimeSpan.FromMilliseconds(100)); // give it a bit to run again
+        await Task.Delay(TimeSpan.FromMilliseconds(100), _ct); // give it a bit to run again
 
         await cleanerSpy.Received(1).CleanAsync(Arg.Any<CancellationToken>());
     }

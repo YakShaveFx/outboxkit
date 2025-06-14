@@ -15,18 +15,14 @@ public enum CompletionMode
     Update
 }
 
-[Collection(MongoDbCollection.Name)]
 public class BatchFetcherTests
 {
-    private readonly MongoDbFixture _fixture;
     private readonly string _databaseName = $"test_{Guid.NewGuid():N}";
     private readonly IMongoDatabase _db;
+    private readonly CancellationToken _ct = TestContext.Current.CancellationToken;
 
-    public BatchFetcherTests(MongoDbFixture fixture)
-    {
-        _fixture = fixture;
-        _db = new MongoClient(fixture.ConnectionString).GetDatabase(_databaseName);
-    }
+    public BatchFetcherTests(MongoDbFixture fixture) 
+        => _db = new MongoClient(fixture.ConnectionString).GetDatabase(_databaseName);
 
     /*
      * WhenTheOutboxIsPolledConcurrentlyThenTheSecondGetsBlocked and WhenTheOutboxIsPolledConcurrentlyTheSecondIsUnblockedByTheFirstCompleting
@@ -52,9 +48,9 @@ public class BatchFetcherTests
         // - second delay is to give the second query time to block
         // (if there's a better way to test this, I'm all ears 😅)
         var batch1Task = sut1.FetchAndHoldAsync(CancellationToken.None);
-        await Task.Delay(TimeSpan.FromSeconds(1));
+        await Task.Delay(TimeSpan.FromSeconds(1), _ct);
         var batch2Task = sut2.FetchAndHoldAsync(CancellationToken.None);
-        await Task.Delay(TimeSpan.FromSeconds(1));
+        await Task.Delay(TimeSpan.FromSeconds(1), _ct);
 
         // both tasks should be completed
         batch1Task.Should().BeEquivalentTo(new
@@ -200,7 +196,7 @@ public class BatchFetcherTests
         return await collection
             .Find(m => true)
             .Project(m => m.Id)
-            .ToListAsync();
+            .ToListAsync(cancellationToken: _ct);
     }
 
 
@@ -208,7 +204,7 @@ public class BatchFetcherTests
         => (await _db.GetCollection<TestMessageWithProcessedAt>(Defaults.Update.CollectionConfigWithProcessedAt.Name)
                 .Find(m => true)
                 .Project(m => new { m.Id, m.ProcessedAt })
-                .ToListAsync())
+                .ToListAsync(cancellationToken: _ct))
             .Select(m => (m.Id, m.ProcessedAt))
             .ToArray();
 
@@ -224,7 +220,7 @@ public class BatchFetcherTests
                     Payload = JsonSerializer.SerializeToUtf8Bytes(new { i }),
                     CreatedAt = DateTime.UtcNow,
                     TraceContext = null
-                }));
+                }), cancellationToken: _ct);
         }
         else
         {
@@ -237,7 +233,7 @@ public class BatchFetcherTests
                     CreatedAt = DateTime.UtcNow,
                     ProcessedAt = null,
                     TraceContext = null
-                }));
+                }), cancellationToken: _ct);
         }
     }
 }

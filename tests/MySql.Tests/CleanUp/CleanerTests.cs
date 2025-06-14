@@ -6,9 +6,10 @@ using YakShaveFx.OutboxKit.MySql.CleanUp;
 
 namespace YakShaveFx.OutboxKit.MySql.Tests.CleanUp;
 
-[Collection(MySqlCollection.Name)]
 public class CleanerTests(MySqlFixture mySqlFixture)
 {
+    private readonly CancellationToken _ct = TestContext.Current.CancellationToken;
+
     [Theory]
     [InlineData(10, 0, 0)]
     [InlineData(10, 5, 5)]
@@ -27,7 +28,7 @@ public class CleanerTests(MySqlFixture mySqlFixture)
         var fakeTimeProvider = new FakeTimeProvider();
         fakeTimeProvider.SetUtcNow(now);
         await using var dbCtx = await mySqlFixture.DbInit.WithDefaultSchema(schemaSettings).WithSeed(0).InitAsync();
-        await using var connection = await dbCtx.DataSource.OpenConnectionAsync();
+        await using var connection = await dbCtx.DataSource.OpenConnectionAsync(_ct);
 
         var messages = Enumerable.Range(0, totalCount)
             .Select(i => new Message(
@@ -37,7 +38,8 @@ public class CleanerTests(MySqlFixture mySqlFixture)
                 ProcessedAt: i switch
                 {
                     _ when i < processedExpiredCount => now.Add(-cleanupSettings.MaxAge).AddMinutes(-1).DateTime,
-                    _ when i >= processedExpiredCount && i < processedExpiredCount + processedRecentCount => now.Add(-cleanupSettings.MaxAge).AddMinutes(1).DateTime,
+                    _ when i >= processedExpiredCount && i < processedExpiredCount + processedRecentCount => now
+                        .Add(-cleanupSettings.MaxAge).AddMinutes(1).DateTime,
                     _ => null
                 },
                 TraceContext: null))
@@ -45,21 +47,24 @@ public class CleanerTests(MySqlFixture mySqlFixture)
         await SeedAsync(connection, messages);
 
         var sut = new Cleaner(tableConfig, cleanupSettings, dbCtx.DataSource, fakeTimeProvider);
-        
-        var deletedCount = await sut.CleanAsync(default);
+
+        var deletedCount = await sut.CleanAsync(_ct);
         deletedCount.Should().Be(processedExpiredCount);
     }
 
     private static async Task SeedAsync(MySqlConnection connection, IEnumerable<Message> messages)
-    {
-        await connection.ExecuteAsync(
+        => await connection.ExecuteAsync(
             // lang=mysql
             """
             INSERT INTO outbox_messages (type, payload, created_at, processed_at, trace_context)
             VALUES (@Type, @Payload, @CreatedAt, @ProcessedAt, @TraceContext);
             """,
             messages);
-    }
 
-    private record Message(string Type, byte[] Payload, DateTime CreatedAt, DateTime? ProcessedAt, byte[]? TraceContext);
+    private record Message(
+        string Type,
+        byte[] Payload,
+        DateTime CreatedAt,
+        DateTime? ProcessedAt,
+        byte[]? TraceContext);
 }
