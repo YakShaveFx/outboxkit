@@ -16,26 +16,64 @@ internal sealed partial class DistributedLockThingy(
 
     public async Task<IDistributedLock> AcquireAsync(DistributedLockDefinition lockDefinition, CancellationToken ct)
     {
-        await KeepTryingToAcquireAsync(lockDefinition, ct);
-        var keepAliveCts = new CancellationTokenSource();
-        OnAcquired(lockDefinition, keepAliveCts.Token);
-        return new DistributedLock(lockDefinition, keepAliveCts, ReleaseLockAsync);
+        // we want to start the listener even before acquiring the lock,
+        // so there's no window of opportunity in which the lock would be lost without the listener noticing it
+        var internalLockDefinition = await CreateInternalLockDefinitionAsync(lockDefinition, ct);
+        try
+        {
+            await KeepTryingToAcquireAsync(internalLockDefinition, ct);
+            var keepAliveCts = new CancellationTokenSource();
+            OnAcquired(internalLockDefinition, keepAliveCts.Token);
+            return new DistributedLock(internalLockDefinition, keepAliveCts, ReleaseLockAsync);
+        }
+        catch (Exception)
+        {
+            await internalLockDefinition.ChangeStreamListener.TryDisposeAsync();
+            throw;
+        }
     }
 
     public async Task<IDistributedLock?> TryAcquireAsync(DistributedLockDefinition lockDefinition, CancellationToken ct)
     {
-        if (!await InnerTryAcquireAsync(lockDefinition, ct))
+        // we want to start the listener even before acquiring the lock,
+        // so there's no window of opportunity in which the lock would be lost without the listener noticing it
+        var internalLockDefinition = await CreateInternalLockDefinitionAsync(lockDefinition, ct);
+        try
         {
-            return null;
-        }
+            if (!await InnerTryAcquireAsync(internalLockDefinition, ct))
+            {
+                await internalLockDefinition.ChangeStreamListener.TryDisposeAsync();
+                return null;
+            }
 
-        var keepAliveCts = new CancellationTokenSource();
-        OnAcquired(lockDefinition, keepAliveCts.Token);
-        return new DistributedLock(lockDefinition, keepAliveCts, ReleaseLockAsync);
+            var keepAliveCts = new CancellationTokenSource();
+            OnAcquired(internalLockDefinition, keepAliveCts.Token);
+            return new DistributedLock(internalLockDefinition, keepAliveCts, ReleaseLockAsync);
+        }
+        catch (Exception)
+        {
+            await internalLockDefinition.ChangeStreamListener.TryDisposeAsync();
+            throw;
+        }
+    }
+
+    private async Task<InternalDistributedLockDefinition> CreateInternalLockDefinitionAsync(
+        DistributedLockDefinition lockDefinition,
+        CancellationToken ct)
+    {
+        var changeStreamListener = _changeStreamsEnabled
+            ? await ChangeStreamListener.StartAsync(_collection, lockDefinition, ct)
+            : null;
+
+        return new InternalDistributedLockDefinition
+        {
+            Definition = lockDefinition,
+            ChangeStreamListener = changeStreamListener
+        };
     }
 
     private async ValueTask ReleaseLockAsync(
-        DistributedLockDefinition lockDefinition,
+        InternalDistributedLockDefinition lockDefinition,
         CancellationTokenSource keepAliveCts)
     {
         // try to release the lock, so others can acquire it before expiration
@@ -65,7 +103,7 @@ internal sealed partial class DistributedLockThingy(
         }
     }
 
-    private async Task<bool> InnerTryAcquireAsync(DistributedLockDefinition lockDefinition, CancellationToken ct)
+    private async Task<bool> InnerTryAcquireAsync(InternalDistributedLockDefinition lockDefinition, CancellationToken ct)
     {
         try
         {
@@ -94,7 +132,7 @@ internal sealed partial class DistributedLockThingy(
         }
     }
 
-    private FilterDefinition<DistributedLockDocument> GetUpsertFilter(DistributedLockDefinition lockDefinition)
+    private FilterDefinition<DistributedLockDocument> GetUpsertFilter(InternalDistributedLockDefinition lockDefinition)
         => Builders<DistributedLockDocument>.Filter.Or(
             Builders<DistributedLockDocument>.Filter.And(
                 Builders<DistributedLockDocument>.Filter.Eq(d => d.Id, lockDefinition.Id),
@@ -103,7 +141,7 @@ internal sealed partial class DistributedLockThingy(
                 Builders<DistributedLockDocument>.Filter.Eq(d => d.Id, lockDefinition.Id),
                 Builders<DistributedLockDocument>.Filter.Lt(d => d.ExpiresAt, GetNow())));
 
-    private async Task KeepTryingToAcquireAsync(DistributedLockDefinition lockDefinition, CancellationToken ct)
+    private async Task KeepTryingToAcquireAsync(InternalDistributedLockDefinition lockDefinition, CancellationToken ct)
     {
         if (!_changeStreamsEnabled)
         {
@@ -122,7 +160,7 @@ internal sealed partial class DistributedLockThingy(
         await linkedTokenSource.CancelAsync();
     }
 
-    private async Task PollAndKeepTryingToAcquireAsync(DistributedLockDefinition lockDefinition, CancellationToken ct)
+    private async Task PollAndKeepTryingToAcquireAsync(InternalDistributedLockDefinition lockDefinition, CancellationToken ct)
     {
         while (!ct.IsCancellationRequested)
         {
@@ -139,30 +177,17 @@ internal sealed partial class DistributedLockThingy(
         }
     }
 
-    private async Task WatchAndKeepTryingToAcquireAsync(DistributedLockDefinition lockDefinition, CancellationToken ct)
+    private async Task WatchAndKeepTryingToAcquireAsync(InternalDistributedLockDefinition lockDefinition, CancellationToken ct)
     {
-        using var cursor = await _collection.WatchAsync(
-            PipelineDefinitionBuilder
-                .For<ChangeStreamDocument<DistributedLockDocument>>()
-                .Match(d =>
-                    d.OperationType == ChangeStreamOperationType.Delete && d.DocumentKey["_id"] == lockDefinition.Id),
-            new ChangeStreamOptions
-            {
-                BatchSize = 1,
-                MaxAwaitTime = TimeSpan.FromMinutes(5)
-            },
-            ct);
-
-        while (!ct.IsCancellationRequested && await cursor.MoveNextAsync(ct))
+        while (!ct.IsCancellationRequested)
         {
-            foreach (var _ in cursor.Current)
-            {
-                if (await InnerTryAcquireAsync(lockDefinition, ct)) return;
-            }
+            // listener is not null when change streams are enabled
+            await lockDefinition.ChangeStreamListener!.WaitAsync();
+            if (await InnerTryAcquireAsync(lockDefinition, ct)) return;
         }
     }
 
-    private void KickoffKeepAlive(DistributedLockDefinition lockDefinition, CancellationToken ct)
+    private void KickoffKeepAlive(InternalDistributedLockDefinition lockDefinition, CancellationToken ct) 
         => _ = Task.Run(async () =>
         {
             var keepAliveInterval = lockDefinition.Duration / 2;
@@ -202,8 +227,14 @@ internal sealed partial class DistributedLockThingy(
                         try
                         {
                             var delayTask = Task.Delay(keepAliveInterval, timeProvider, linkedTokenSource.Token);
-                            watchLockLossTask = WatchForPotentialLockLossAsync(lockDefinition, linkedTokenSource.Token);
-                            await Task.WhenAny(delayTask, watchLockLossTask);
+
+                            // listener is not null when change streams are enabled
+                            await Task.WhenAny(delayTask, lockDefinition.ChangeStreamListener!.WaitAsync());
+                            
+                            if (!delayTask.IsCompleted)
+                            {
+                                LogPotentiallyLost(logger, lockDefinition.Id, lockDefinition.Context);
+                            }
 
                             // if awaiting was interrupted by cancellation, we can break
                             if (ct.IsCancellationRequested) break;
@@ -236,40 +267,16 @@ internal sealed partial class DistributedLockThingy(
                     }
                 }
             }
-
             LogKeepAliveStopped(logger, lockDefinition.Id, lockDefinition.Context);
         }, CancellationToken.None);
 
-    private async Task WatchForPotentialLockLossAsync(DistributedLockDefinition lockDefinition, CancellationToken ct)
-    {
-        using var cursor = await _collection.WatchAsync(
-            PipelineDefinitionBuilder
-                .For<ChangeStreamDocument<DistributedLockDocument>>()
-                .Match(d => d.DocumentKey["_id"] == lockDefinition.Id),
-            new ChangeStreamOptions
-            {
-                BatchSize = 1,
-                MaxAwaitTime = TimeSpan.FromMinutes(5)
-            },
-            ct);
-
-        while (!ct.IsCancellationRequested && await cursor.MoveNextAsync(ct))
-        {
-            if (cursor.Current.Any())
-            {
-                LogPotentiallyLost(logger, lockDefinition.Id, lockDefinition.Context);
-                return;
-            }
-        }
-    }
-
-    private void OnAcquired(DistributedLockDefinition lockDefinition, CancellationToken ct)
+    private void OnAcquired(InternalDistributedLockDefinition lockDefinition, CancellationToken ct)
     {
         LogAcquired(logger, lockDefinition.Id, lockDefinition.Context);
         KickoffKeepAlive(lockDefinition, ct);
     }
 
-    private void OnLost(DistributedLockDefinition lockDefinition)
+    private void OnLost(InternalDistributedLockDefinition lockDefinition)
     {
         LogLost(logger, lockDefinition.Id, lockDefinition.Context);
         _ = Task.Run(() => lockDefinition.OnLockLost());
@@ -279,7 +286,7 @@ internal sealed partial class DistributedLockThingy(
 
     private long GetExpiresAt(TimeSpan duration) => timeProvider.GetUtcNow().Add(duration).ToUnixTimeMilliseconds();
 
-    private TimeSpan GetRemainingTime(DistributedLockDefinition lockDefinition, long expiresAt)
+    private TimeSpan GetRemainingTime(InternalDistributedLockDefinition lockDefinition, long expiresAt)
     {
         var remaining = expiresAt - timeProvider.GetUtcNow().ToUnixTimeMilliseconds();
         return remaining > 0
@@ -321,11 +328,10 @@ internal sealed partial class DistributedLockThingy(
         Message = "An error occurred executing lock keep alive (id \"{Id}\" context \"{Context}\")")]
     private static partial void LogErrorExecutingKeepAlive(ILogger logger, Exception ex, string id, string? context);
 
-
     private sealed class DistributedLock(
-        DistributedLockDefinition definition,
+        InternalDistributedLockDefinition definition,
         CancellationTokenSource keepAliveCts,
-        Func<DistributedLockDefinition, CancellationTokenSource, ValueTask> releaseLock) : IDistributedLock
+        Func<InternalDistributedLockDefinition, CancellationTokenSource, ValueTask> releaseLock) : IDistributedLock
     {
         public ValueTask DisposeAsync() => releaseLock(definition, keepAliveCts);
     }
