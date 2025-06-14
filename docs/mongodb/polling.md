@@ -125,6 +125,6 @@ The `k` parameter shown in the example above in the `WithDatabaseFactory` method
 
 ## Important notes
 
-- Due to the need to implement a distributed locking mechanism, not just using something provided by the database itself, makes the likelihood of bugs in this provider higher than in others. Hopefully it's implemented well, but if you find any issues, please report them.
+- Due to the need to implement a distributed locking mechanism, not just using something provided by the database itself, makes the likelihood of bugs in this provider higher than in others. Hopefully it's implemented well, but if you find any issues, please report them (with sample code to reproduce, bonus points if you're up to work on a fix).
 - For simplicity and testability, the distributed locking mechanism uses the date/time of the machine running the application to determine lock expiration. For this reason, when running multiple instances of the application, it's important that the clocks are in sync, otherwise there might be unexpected behavior. Other approaches might be considered, but at this point, it seemed an acceptable approach.
 - This implementation of the MongoDB polling provider was designed exclusively to be used with a primary database instance. It wasn't thought or tested to be used with sharded clusters.
