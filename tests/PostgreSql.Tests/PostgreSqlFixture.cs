@@ -136,18 +136,21 @@ public interface IDatabaseContextInitializer
 
 file static class InitializationExtensions
 {
+    // not following the convention of using snake_case, so that we test that the provider
+    // quotes things correctly and everything works as expected
+    
     public static async Task SetupDatabaseWithDefaultSettingsAsync(this NpgsqlConnection connection)
     {
         await using var command = new NpgsqlCommand(
             // lang=postgresql
             """
-             create table if not exists outbox_messages
+             create table if not exists "OutboxMessages"
              (
-                 id              bigint generated always as identity primary key,
-                 type            varchar(128) not null,
-                 payload         bytea         not null,
-                 created_at      timestamp(6)  not null,
-                 trace_context   bytea         null
+                "Id"              bigint generated always as identity primary key,
+                "Type"            varchar(128)  not null,
+                "Payload"         bytea         not null,
+                "CreatedAt"       timestamp(6)  not null,
+                "TraceContext"    bytea         null
              );
              """, connection);
         await command.ExecuteNonQueryAsync();
@@ -158,14 +161,14 @@ file static class InitializationExtensions
         await using var command = new NpgsqlCommand(
             // lang=postgresql
             """
-            create table if not exists outbox_messages
+            create table if not exists "OutboxMessages"
             (
-                id              bigint generated always as identity primary key,
-                type            varchar(128)  not null,
-                payload         bytea         not null,
-                created_at      timestamp(6)  not null,
-                trace_context   bytea         null,
-                processed_at    timestamp(6)  null
+                "Id"              bigint generated always as identity primary key,
+                "Type"            varchar(128)  not null,
+                "Payload"         bytea         not null,
+                "CreatedAt"       timestamp(6)  not null,
+                "TraceContext"    bytea         null,
+                "ProcessedAt"     timestamp(6)  null
             );
             """, connection);
         await command.ExecuteNonQueryAsync();
@@ -185,7 +188,7 @@ file static class InitializationExtensions
 
         await connection.ExecuteAsync(
             // lang=postgresql
-            $"INSERT INTO outbox_messages (type, payload, created_at, trace_context) VALUES (@Type, @Payload, @CreatedAt, @TraceContext);",
+            """INSERT INTO "OutboxMessages" ("Type", "Payload", "CreatedAt", "TraceContext") VALUES (@Type, @Payload, @CreatedAt, @TraceContext);""",
             messages);
     }
 }

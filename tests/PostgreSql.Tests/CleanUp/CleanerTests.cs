@@ -56,7 +56,7 @@ public class CleanerTests(PostgreSqlFixture postgresFixture)
         => await connection.ExecuteAsync(
             // lang=postgresql
             """
-            INSERT INTO outbox_messages (type, payload, created_at, processed_at, trace_context)
+            INSERT INTO "OutboxMessages" ("Type", "Payload", "CreatedAt", "ProcessedAt", "TraceContext")
             VALUES (@Type, @Payload, @CreatedAt, @ProcessedAt, @TraceContext);
             """,
             messages);

@@ -241,33 +241,33 @@ internal sealed class AdvisoryLockBatchFetcher : IBatchFetcher
 
     private static string SetupHasNextQuery(PostgreSqlPollingSettings pollingSettings, TableConfiguration tableCfg) =>
         pollingSettings.CompletionMode == CompletionMode.Delete
-            ? $"SELECT EXISTS(SELECT 1 FROM {tableCfg.Name} LIMIT 1);"
-            : $"SELECT EXISTS(SELECT 1 FROM {tableCfg.Name} WHERE {tableCfg.ProcessedAtColumn} IS NULL LIMIT 1);";
+            ? $"SELECT EXISTS(SELECT 1 FROM {tableCfg.Name.Quote()} LIMIT 1);"
+            : $"SELECT EXISTS(SELECT 1 FROM {tableCfg.Name.Quote()} WHERE {tableCfg.ProcessedAtColumn.Quote()} IS NULL LIMIT 1);";
 
     private static string SetupUpdateQuery(TableConfiguration tableCfg) =>
-        $"UPDATE {tableCfg.Name} SET {tableCfg.ProcessedAtColumn} = @processedAt WHERE {tableCfg.IdColumn} IN ({{0}});";
+        $"UPDATE {tableCfg.Name.Quote()} SET {tableCfg.ProcessedAtColumn.Quote()} = @processedAt WHERE {tableCfg.IdColumn.Quote()} IN ({{0}});";
 
     private static string SetupDeleteQuery(TableConfiguration tableCfg) =>
-        $"DELETE FROM {tableCfg.Name} WHERE {tableCfg.IdColumn} IN ({{0}});";
+        $"DELETE FROM {tableCfg.Name.Quote()} WHERE {tableCfg.IdColumn.Quote()} IN ({{0}});";
 
     private static string SetupSelectQuery(PostgreSqlPollingSettings pollingSettings, TableConfiguration tableCfg) =>
         pollingSettings.CompletionMode == CompletionMode.Delete
             ? $"""
-               SELECT {string.Join(", ", tableCfg.Columns)}
-               FROM {tableCfg.Name}
+               SELECT {string.Join(", ", tableCfg.Columns.Select(Extensions.Quote))}
+               FROM {tableCfg.Name.Quote()}
                ORDER BY {SetupOrderByClause(tableCfg)}
                LIMIT @size;
                """
             : $"""
-               SELECT {string.Join(", ", tableCfg.Columns)}
-               FROM {tableCfg.Name}
-               WHERE {tableCfg.ProcessedAtColumn} IS NULL
+               SELECT {string.Join(", ", tableCfg.Columns.Select(Extensions.Quote))}
+               FROM {tableCfg.Name.Quote()}
+               WHERE {tableCfg.ProcessedAtColumn.Quote()} IS NULL
                ORDER BY {SetupOrderByClause(tableCfg)}
                LIMIT @size;
                """;
 
     private static string SetupOrderByClause(TableConfiguration tableCfg) =>
-        string.Join(", ", tableCfg.SortExpressions.Select(se => $"{se.Column} {DirectionToString(se.Direction)}"));
+        string.Join(", ", tableCfg.SortExpressions.Select(se => $"{se.Column.Quote()} {DirectionToString(se.Direction)}"));
 
     private static string DirectionToString(SortDirection direction) =>
         direction switch

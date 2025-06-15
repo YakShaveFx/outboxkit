@@ -172,10 +172,10 @@ internal class BaseBatchFetcherTests(PostgreSqlFixture postgresFixture, BatchFet
     }
 
     private static async Task<IReadOnlyCollection<long>> FetchMessageIdsAsync(NpgsqlConnection connection)
-        => (await connection.QueryAsync<long>("SELECT id FROM outbox_messages;")).ToArray();
+        => [..await connection.QueryAsync<long>("""SELECT "Id" FROM "OutboxMessages";""")];
 
     private static async Task<IReadOnlyCollection<(long Id, DateTime? ProcessedAt)>> FetchMessageSummariesAsync(
         NpgsqlConnection connection)
-        => (await connection.QueryAsync<(long Id, DateTime? ProcessedAt)>(
-            "SELECT id, processed_at FROM outbox_messages;")).ToArray();
+        => [..await connection.QueryAsync<(long Id, DateTime? ProcessedAt)>(
+            """SELECT "Id", "ProcessedAt" FROM "OutboxMessages";""")];
 }

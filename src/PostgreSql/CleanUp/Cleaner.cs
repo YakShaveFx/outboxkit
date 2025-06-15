@@ -11,8 +11,8 @@ internal sealed class Cleaner(
     TimeProvider timeProvider) : IOutboxCleaner
 {
     private readonly string _deleteQuery = $"""
-                                            DELETE FROM {tableCfg.Name}
-                                            WHERE {tableCfg.ProcessedAtColumn} < @maxProcessedAt;
+                                            DELETE FROM {tableCfg.Name.Quote()}
+                                            WHERE {tableCfg.ProcessedAtColumn.Quote()} < @maxProcessedAt;
                                             """;
 
     public async Task<int> CleanAsync(CancellationToken ct)

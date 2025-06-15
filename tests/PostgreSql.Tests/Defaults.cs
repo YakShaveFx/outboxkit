@@ -23,7 +23,29 @@ internal static class Defaults
             BatchSize = 5
         };
 
-        internal static readonly TableConfiguration TableConfig = TableConfiguration.Default;
+        // not following the convention of using snake_case, so that we test that the provider
+        // quotes things correctly and everything works as expected
+        internal static readonly TableConfiguration TableConfig =  new(
+            "OutboxMessages",
+            [
+                "Id",
+                "Type",
+                "Payload",
+                "CreatedAt",
+                "TraceContext"
+            ],
+            "Id",
+            [new("Id")],
+            "",
+            m => ((Message)m).Id,
+            static r => new Message
+            {
+                Id = r.GetInt64(0),
+                Type = r.GetString(1),
+                Payload = r.GetFieldValue<byte[]>(2),
+                CreatedAt = r.GetDateTime(3),
+                TraceContext = r.IsDBNull(4) ? null : r.GetFieldValue<byte[]>(4)
+            });
     }
 
     internal static class Update
@@ -46,7 +68,7 @@ internal static class Defaults
 
         internal static readonly TableConfiguration TableConfigWithProcessedAt = Delete.TableConfig with
         {
-            ProcessedAtColumn = "processed_at"
+            ProcessedAtColumn = "ProcessedAt",
         };
     }
 }
