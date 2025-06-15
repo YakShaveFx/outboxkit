@@ -98,14 +98,13 @@ public interface IPostgreSqlPollingOutboxKitConfigurator
     
     /// <summary>
     /// <para>Configures the outbox to use advisory locks for concurrency control.</para>
-    /// <para>See <see href="https://dev.mysql.com/doc/refman/8.0/en/locking-functions.html"/> for more info about this type of locks</para>
+    /// <para>See <see href="https://www.postgresql.org/docs/current/explicit-locking.html#ADVISORY-LOCKS"/> for more info about this type of locks</para>
     /// </summary>
     /// <returns>The <see cref="IPostgreSqlPollingOutboxKitConfigurator"/> instance for chaining calls.</returns>
     /// <remarks>
     /// <para>In some scenarios, using advisory locks might provide performance benefits when compared to "SELECT ... FOR UPDATE",
     /// given it avoids locking the actual rows in the outbox table as they're being produced.
     /// Tests should be done to verify if there are benefits for a given scenario.</para>
-    /// <para>As per PostgreSQL documentation, usage of these kinds of locks is not safe when statement-based replication is in use.</para>
     /// </remarks>
     IPostgreSqlPollingOutboxKitConfigurator WithAdvisoryLockConcurrencyControl();
 }
