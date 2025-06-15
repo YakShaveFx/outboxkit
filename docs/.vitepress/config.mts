@@ -86,6 +86,14 @@ export default defineConfig({
         ],
       },
       {
+        text: "PostgreSQL",
+        collapsed: true,
+        items: [
+          { text: "PostgreSQL provider overview", link: "/postgresql/overview" },
+          { text: "Polling", link: "/postgresql/polling" },
+        ],
+      },
+      {
         text: "MongoDB",
         collapsed: true,
         items: [
