@@ -4,6 +4,7 @@
         <RootNamespace>YakShaveFx.OutboxKit.PostgreSql.Tests</RootNamespace>
         <IsPackable>false</IsPackable>
         <IsTestProject>true</IsTestProject>
+        <OutputType>Exe</OutputType>
     </PropertyGroup>
 
     <ItemGroup>

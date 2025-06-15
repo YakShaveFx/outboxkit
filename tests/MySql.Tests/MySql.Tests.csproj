@@ -4,6 +4,7 @@
     <RootNamespace>YakShaveFx.OutboxKit.MySql.Tests</RootNamespace>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
+    <OutputType>Exe</OutputType>
   </PropertyGroup>
 
   <ItemGroup>
