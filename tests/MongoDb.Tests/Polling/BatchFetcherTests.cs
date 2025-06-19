@@ -168,7 +168,12 @@ public class BatchFetcherTests
                     _db,
                     timeProvider,
                     NullLogger<DistributedLockThingy>.Instance),
-                timeProvider),
+                new OutboxBatchCompleter<TestMessage, ObjectId>(
+                    MongoDbPollingProvider.CreateKey("test"),
+                    Defaults.Delete.MongoDbPollingSettings,
+                    Defaults.Delete.CollectionConfig,
+                    _db,
+                    timeProvider)),
             CompletionMode.Update => new OutboxBatchFetcher<TestMessageWithProcessedAt, ObjectId>(
                 MongoDbPollingProvider.CreateKey("test"),
                 Defaults.Update.MongoDbPollingSettings,
@@ -186,7 +191,12 @@ public class BatchFetcherTests
                     _db,
                     timeProvider,
                     NullLogger<DistributedLockThingy>.Instance),
-                timeProvider),
+                new OutboxBatchCompleter<TestMessageWithProcessedAt, ObjectId>(
+                    MongoDbPollingProvider.CreateKey("test"),
+                    Defaults.Update.MongoDbPollingSettings,
+                    Defaults.Update.CollectionConfigWithProcessedAt,
+                    _db,
+                    timeProvider)),
             _ => throw new ArgumentOutOfRangeException(nameof(completionMode))
         };
 

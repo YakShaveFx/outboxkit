@@ -81,7 +81,7 @@ public static class ServiceCollectionExtensions
             services.AddKeyedSingleton(
                 key,
                 (s, _) => new CompleteProduceMessagesRetrier(
-                    s.GetRequiredService<ICompleteRetrier>(),
+                    s.GetRequiredKeyedService<ICompleteRetrier>(key),
                     s.GetRequiredService<RetrierBuilderFactory>(),
                     s.GetRequiredService<ILogger<CompleteProduceMessagesRetrier>>()));
             
