@@ -39,6 +39,7 @@ public static class ServiceCollectionExtensions
     private static void AddOutboxKitPolling(IServiceCollection services, OutboxKitConfigurator configurator)
     {
         services.AddSingleton<ProducerMetrics>();
+        services.AddSingleton<RetrierBuilderFactory>();
 
         if (configurator.PollingConfigurators.Count == 1)
         {
@@ -74,13 +75,29 @@ public static class ServiceCollectionExtensions
                 s.GetRequiredKeyedService<IPollingProducer>(key),
                 s.GetRequiredService<TimeProvider>(),
                 corePollingSettings,
+                s.GetRequiredKeyedService<IRetryCompletionOfProducedMessages>(key),
                 s.GetRequiredService<ILogger<PollingBackgroundService>>()));
 
+            services.AddKeyedSingleton(
+                key,
+                (s, _) => new CompleteProduceMessagesRetrier(
+                    s.GetRequiredService<ICompleteRetrier>(),
+                    s.GetRequiredService<RetrierBuilderFactory>(),
+                    s.GetRequiredService<ILogger<CompleteProduceMessagesRetrier>>()));
+            
+            services.AddKeyedSingleton<ICollectProducedMessagesToRetryCompletion>(key,
+                (s, _) => s.GetRequiredKeyedService<CompleteProduceMessagesRetrier>(key));
+            
+            services.AddKeyedSingleton<IRetryCompletionOfProducedMessages>(key,
+                (s, _) => s.GetRequiredKeyedService<CompleteProduceMessagesRetrier>(key));
+            
             services.AddKeyedSingleton<IPollingProducer>(key, (s, _) => new PollingProducer(
                 key,
                 s.GetRequiredKeyedService<IBatchFetcher>(key),
                 s.GetRequiredService<IBatchProducer>(),
-                s.GetRequiredService<ProducerMetrics>()));
+                s.GetRequiredKeyedService<ICollectProducedMessagesToRetryCompletion>(key),
+                s.GetRequiredService<ProducerMetrics>(),
+                s.GetRequiredService<ILogger<PollingProducer>>()));
             
             if (corePollingSettings.EnableCleanUp)
             {

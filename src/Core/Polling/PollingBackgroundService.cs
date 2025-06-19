@@ -9,6 +9,7 @@ internal sealed partial class PollingBackgroundService(
     IPollingProducer producer,
     TimeProvider timeProvider,
     CorePollingSettings settings,
+    IRetryCompletionOfProducedMessages completeRetrier,
     ILogger<PollingBackgroundService> logger) : BackgroundService
 {
     private readonly TimeSpan _pollingInterval = settings.PollingInterval;
@@ -23,6 +24,8 @@ internal sealed partial class PollingBackgroundService(
         {
             try
             {
+                await completeRetrier.RetryCompleteAsync(stoppingToken);
+                
                 try
                 {
                     await producer.ProducePendingAsync(stoppingToken);
@@ -38,26 +41,7 @@ internal sealed partial class PollingBackgroundService(
                     LogUnexpectedError(logger, key.ProviderKey, key.ClientKey, ex);
                 }
 
-                // to avoid letting the delays running in the background, wasting resources
-                // we create a linked token, to cancel them
-                using var linkedTokenSource = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
-
-                var listenerTask = listener.WaitForMessagesAsync(key, linkedTokenSource.Token);
-                var delayTask = Task.Delay(_pollingInterval, timeProvider, linkedTokenSource.Token);
-
-                // wait for whatever occurs first:
-                // - being notified of new messages added to the outbox
-                // - poll the outbox every x amount of time, for example, in cases where another instance of the service persisted
-                //   something but didn't produce it, or some error occurred when producing and there are pending messages
-                await Task.WhenAny(listenerTask, delayTask);
-
-                LogWakeUp(
-                    logger,
-                    key.ProviderKey,
-                    key.ClientKey,
-                    listenerTask.IsCompleted ? "listener triggered" : "polling interval elapsed");
-
-                await linkedTokenSource.CancelAsync();
+                await WaitBeforeNextIteration(stoppingToken);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -66,6 +50,33 @@ internal sealed partial class PollingBackgroundService(
         }
 
         LogStopping(logger, key.ProviderKey, key.ClientKey);
+    }
+
+    private async Task WaitBeforeNextIteration(CancellationToken ct)
+    {
+        // no need to even try to wait if the service is stopping
+        if (ct.IsCancellationRequested) return;
+        
+        // to avoid letting the delays running in the background, wasting resources
+        // we create a linked token, to cancel them
+        using var linkedTokenSource = CancellationTokenSource.CreateLinkedTokenSource(ct);
+
+        var listenerTask = listener.WaitForMessagesAsync(key, linkedTokenSource.Token);
+        var delayTask = Task.Delay(_pollingInterval, timeProvider, linkedTokenSource.Token);
+
+        // wait for whatever occurs first:
+        // - being notified of new messages added to the outbox
+        // - poll the outbox every x amount of time, for example, in cases where another instance of the service persisted
+        //   something but didn't produce it, or some error occurred when producing and there are pending messages
+        await Task.WhenAny(listenerTask, delayTask);
+
+        LogWakeUp(
+            logger,
+            key.ProviderKey,
+            key.ClientKey,
+            listenerTask.IsCompleted ? "listener triggered" : "polling interval elapsed");
+
+        await linkedTokenSource.CancelAsync();
     }
 
     [LoggerMessage(LogLevel.Debug,
