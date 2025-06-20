@@ -88,14 +88,14 @@ public interface IMySqlPollingOutboxKitConfigurator
     /// <remarks>OutboxKit assumes the "processed at" column is a <see cref="DateTime"/> in UTC,
     /// and uses <see cref="TimeProvider"/> to obtain the time when completing and cleaning up the messages.</remarks>
     IMySqlPollingOutboxKitConfigurator WithUpdateProcessed(Action<IMySqlUpdateProcessedConfigurator>? configure);
-    
+
     /// <summary>
     /// Configures the outbox to use "SELECT ... FOR UPDATE" for concurrency control.
     /// </summary>
     /// <returns>The <see cref="IMySqlPollingOutboxKitConfigurator"/> instance for chaining calls.</returns>
     /// <remarks>This is the default concurrency control if nothing is explicitly set.</remarks>
     IMySqlPollingOutboxKitConfigurator WithSelectForUpdateConcurrencyControl();
-    
+
     /// <summary>
     /// <para>Configures the outbox to use advisory locks for concurrency control.</para>
     /// <para>See <see href="https://dev.mysql.com/doc/refman/8.0/en/locking-functions.html"/> for more info about this type of locks</para>
@@ -194,13 +194,13 @@ internal sealed class PollingOutboxKitConfigurator : IPollingOutboxKitConfigurat
         };
         return this;
     }
-    
+
     public IMySqlPollingOutboxKitConfigurator WithSelectForUpdateConcurrencyControl()
     {
         _settings = _settings with { ConcurrencyControl = ConcurrencyControl.SelectForUpdate };
         return this;
     }
-    
+
     public IMySqlPollingOutboxKitConfigurator WithAdvisoryLockConcurrencyControl()
     {
         _settings = _settings with { ConcurrencyControl = ConcurrencyControl.AdvisoryLock };
@@ -233,6 +233,14 @@ internal sealed class PollingOutboxKitConfigurator : IPollingOutboxKitConfigurat
                 s.GetRequiredService<TimeProvider>()));
         }
 
+        services.AddKeyedSingleton(key, (s, _) => new BatchCompleter(
+            _settings,
+            tableCfg,
+            s.GetRequiredKeyedService<MySqlDataSource>(key),
+            s.GetRequiredService<TimeProvider>()));
+
+        services.AddKeyedSingleton<ICompleteRetrier>(key, (s, _) => s.GetRequiredKeyedService<BatchCompleter>(key));
+
         services
             .AddKeyedMySqlDataSource(key, _connectionString)
             .AddKeyedSingleton<IBatchFetcher>(
@@ -244,13 +252,14 @@ internal sealed class PollingOutboxKitConfigurator : IPollingOutboxKitConfigurat
                             _settings,
                             tableCfg,
                             s.GetRequiredKeyedService<MySqlDataSource>(key),
-                            s.GetRequiredService<TimeProvider>()),
+                            s.GetRequiredKeyedService<BatchCompleter>(key)),
                         ConcurrencyControl.AdvisoryLock => new AdvisoryLockBatchFetcher(
                             _settings,
                             tableCfg,
                             s.GetRequiredKeyedService<MySqlDataSource>(key),
-                            s.GetRequiredService<TimeProvider>()),
-                        _ => throw new InvalidOperationException($"Invalid concurrency control {_settings.ConcurrencyControl}")
+                            s.GetRequiredKeyedService<BatchCompleter>(key)),
+                        _ => throw new InvalidOperationException(
+                            $"Invalid concurrency control {_settings.ConcurrencyControl}")
                     });
     }
 
@@ -280,9 +289,8 @@ internal sealed record MySqlPollingSettings
     public int BatchSize { get; init; } = 100;
 
     public CompletionMode CompletionMode { get; init; } = CompletionMode.Delete;
-    
+
     public ConcurrencyControl ConcurrencyControl { get; init; } = ConcurrencyControl.SelectForUpdate;
-    
 }
 
 internal enum CompletionMode

@@ -46,7 +46,9 @@ internal sealed class CompleteProduceMessagesRetrier(
                 () => completeRetrier.RetryCompleteAsync(_messages, ct),
                 ct);
 
+            // since most of the time there are no messages to retry
             // clear messages by creating a new list, so the old one can be garbage collected
+            // avoiding the underlying array to be kept in memory
             _messages = new();
         }
         catch (Exception ex)

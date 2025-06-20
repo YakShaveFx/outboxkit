@@ -1,6 +1,6 @@
 using Dapper;
 using YakShaveFx.OutboxKit.MySql.Polling;
-using static YakShaveFx.OutboxKit.MySql.Tests.Polling.BatchFetcherTestHelpers;
+using static YakShaveFx.OutboxKit.MySql.Tests.Polling.TestHelpers;
 
 namespace YakShaveFx.OutboxKit.MySql.Tests.Polling;
 
@@ -10,7 +10,11 @@ public class AdvisoryLockBatchFetcherTests(MySqlFixture mySqlFixture)
     private readonly BaseBatchFetcherTests _baseTests = new(
         mySqlFixture,
         (pollingSettings, tableCfg, dataSource, timeProvider) =>
-            new AdvisoryLockBatchFetcher(pollingSettings, tableCfg, dataSource, timeProvider));
+            new AdvisoryLockBatchFetcher(
+                pollingSettings,
+                tableCfg,
+                dataSource,
+                new BatchCompleter(pollingSettings, tableCfg, dataSource, timeProvider)));
 
     [Theory]
     [InlineData(CompletionMode.Delete)]
@@ -58,7 +62,7 @@ public class AdvisoryLockBatchFetcherTests(MySqlFixture mySqlFixture)
             .InitAsync();
         await using var connection = await dbCtx.DataSource.OpenConnectionAsync(_ct);
 
-        var sut = new AdvisoryLockBatchFetcher(mySqlSettings, tableConfig, dbCtx.DataSource, TimeProvider.System);
+        var sut = new AdvisoryLockBatchFetcher(mySqlSettings, tableConfig, dbCtx.DataSource, new BatchCompleter(mySqlSettings, tableConfig, dbCtx.DataSource, TimeProvider.System));
 
         await using var _ = await sut.FetchAndHoldAsync(CancellationToken.None);
 

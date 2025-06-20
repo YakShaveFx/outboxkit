@@ -4,7 +4,7 @@ using MySqlConnector;
 using YakShaveFx.OutboxKit.Core.Polling;
 using YakShaveFx.OutboxKit.MySql.Polling;
 using YakShaveFx.OutboxKit.MySql.Shared;
-using static YakShaveFx.OutboxKit.MySql.Tests.Polling.BatchFetcherTestHelpers;
+using static YakShaveFx.OutboxKit.MySql.Tests.Polling.TestHelpers;
 
 namespace YakShaveFx.OutboxKit.MySql.Tests.Polling;
 
