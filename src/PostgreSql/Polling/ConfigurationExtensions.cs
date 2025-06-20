@@ -232,6 +232,15 @@ internal sealed class PollingOutboxKitConfigurator : IPollingOutboxKitConfigurat
                 s.GetRequiredService<TimeProvider>()));
         }
 
+        services.AddKeyedSingleton(key, (s, _) => new BatchCompleter(
+            _settings,
+            tableCfg,
+            s.GetRequiredKeyedService<NpgsqlDataSource>(key),
+            s.GetRequiredService<TimeProvider>()));
+
+        services.AddKeyedSingleton<ICompleteRetrier>(key, (s, _) => s.GetRequiredKeyedService<BatchCompleter>(key));
+
+        
         services
             .AddNpgsqlDataSource(_connectionString, serviceKey: key)
             .AddKeyedSingleton<IBatchFetcher>(
@@ -243,12 +252,12 @@ internal sealed class PollingOutboxKitConfigurator : IPollingOutboxKitConfigurat
                             _settings,
                             tableCfg,
                             s.GetRequiredKeyedService<NpgsqlDataSource>(key),
-                            s.GetRequiredService<TimeProvider>()),
+                            s.GetRequiredKeyedService<BatchCompleter>(key)),
                         ConcurrencyControl.AdvisoryLock => new AdvisoryLockBatchFetcher(
                             _settings,
                             tableCfg,
                             s.GetRequiredKeyedService<NpgsqlDataSource>(key),
-                            s.GetRequiredService<TimeProvider>()),
+                            s.GetRequiredKeyedService<BatchCompleter>(key)),
                         _ => throw new InvalidOperationException($"Invalid concurrency control {_settings.ConcurrencyControl}")
                     });
     }

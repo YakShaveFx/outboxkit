@@ -7,7 +7,11 @@ public class SelectForUpdateBatchFetcherTests(PostgreSqlFixture postgresFixture)
     private readonly BaseBatchFetcherTests _baseTests = new(
         postgresFixture,
         (pollingSettings, tableCfg, dataSource, timeProvider) =>
-            new SelectForUpdateBatchFetcher(pollingSettings, tableCfg, dataSource, timeProvider));
+            new SelectForUpdateBatchFetcher(
+                pollingSettings, 
+                tableCfg,
+                dataSource,
+                new BatchCompleter(pollingSettings, tableCfg, dataSource, timeProvider)));
 
     [Theory]
     [InlineData(CompletionMode.Delete)]

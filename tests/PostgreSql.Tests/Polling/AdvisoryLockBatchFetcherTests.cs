@@ -3,7 +3,7 @@ using Npgsql;
 using YakShaveFx.OutboxKit.Core.Polling;
 using YakShaveFx.OutboxKit.PostgreSql.Polling;
 using YakShaveFx.OutboxKit.PostgreSql.Shared;
-using static YakShaveFx.OutboxKit.PostgreSql.Tests.Polling.BatchFetcherTestHelpers;
+using static YakShaveFx.OutboxKit.PostgreSql.Tests.Polling.TestHelpers;
 
 namespace YakShaveFx.OutboxKit.PostgreSql.Tests.Polling;
 
@@ -95,7 +95,7 @@ public class AdvisoryLockBatchFetcherTests(PostgreSqlFixture postgresFixture)
             .WithSeed(seed ? 10 : 0)
             .InitAsync();
         
-        var sut = new AdvisoryLockBatchFetcher(postgresSettings, tableConfig, dbCtx.DataSource, TimeProvider.System);
+        var sut = new AdvisoryLockBatchFetcher(postgresSettings, tableConfig, dbCtx.DataSource, new BatchCompleter(postgresSettings, tableConfig, dbCtx.DataSource, TimeProvider.System));
 
         await using var _ = await sut.FetchAndHoldAsync(CancellationToken.None);
         
@@ -113,5 +113,5 @@ public class AdvisoryLockBatchFetcherTests(PostgreSqlFixture postgresFixture)
     }
     
     private static IBatchFetcher SutFactory(PostgreSqlPollingSettings pollingSettings, TableConfiguration tableCfg, NpgsqlDataSource dataSource, TimeProvider timeProvider) 
-        => new AdvisoryLockBatchFetcher(pollingSettings, tableCfg, dataSource, timeProvider);
+        => new AdvisoryLockBatchFetcher(pollingSettings, tableCfg, dataSource, new BatchCompleter(pollingSettings, tableCfg, dataSource, timeProvider));
 }

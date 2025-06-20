@@ -3,7 +3,7 @@ using YakShaveFx.OutboxKit.PostgreSql.Shared;
 
 namespace YakShaveFx.OutboxKit.PostgreSql.Tests.Polling;
 
-internal static class BatchFetcherTestHelpers
+internal static class TestHelpers
 {
     public record Config(
         DefaultSchemaSettings DefaultSchemaSettings,

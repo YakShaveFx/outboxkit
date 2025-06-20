@@ -11,9 +11,6 @@ internal sealed class SelectForUpdateBatchFetcher : IBatchFetcher
     private delegate BatchContext BatchContextFactory(
         IReadOnlyCollection<IMessage> messages, NpgsqlConnection connection, NpgsqlTransaction tx);
 
-    private delegate NpgsqlCommand CompleteCommandFactory(
-        IReadOnlyCollection<IMessage> ok, NpgsqlConnection connection, NpgsqlTransaction tx);
-
     private readonly int _batchSize;
     private readonly string _selectQuery;
     private readonly Func<NpgsqlDataReader, IMessage> _messageFactory;
@@ -24,13 +21,11 @@ internal sealed class SelectForUpdateBatchFetcher : IBatchFetcher
         PostgreSqlPollingSettings pollingSettings,
         TableConfiguration tableCfg,
         NpgsqlDataSource dataSource,
-        TimeProvider timeProvider)
+        BatchCompleter completer)
     {
         _dataSource = dataSource;
         _batchSize = pollingSettings.BatchSize;
         _selectQuery = SetupSelectQuery(pollingSettings, tableCfg);
-        var deleteQuery = SetupDeleteQuery(tableCfg);
-        var updateQuery = SetupUpdateQuery(tableCfg);
         var hasNextQuery = SetupHasNextQuery(pollingSettings, tableCfg);
         _messageFactory = tableCfg.MessageFactory;
         _batchContextFactory =
@@ -39,15 +34,7 @@ internal sealed class SelectForUpdateBatchFetcher : IBatchFetcher
                 connection,
                 transaction,
                 hasNextQuery,
-                pollingSettings.CompletionMode switch
-                {
-                    CompletionMode.Delete => (ok, conn, tx) =>
-                        CreateDeleteCommand(deleteQuery, tableCfg.IdGetter, ok, conn, tx),
-                    CompletionMode.Update => (ok, conn, tx) =>
-                        CreateUpdateCommand(updateQuery, timeProvider, tableCfg.IdGetter, ok, conn, tx),
-                    _ => throw new InvalidOperationException(
-                        $"Invalid completion mode {pollingSettings.CompletionMode}")
-                });
+                completer);
     }
 
     public async Task<IBatchContext> FetchAndHoldAsync(CancellationToken ct)
@@ -102,31 +89,21 @@ internal sealed class SelectForUpdateBatchFetcher : IBatchFetcher
         NpgsqlConnection connection,
         NpgsqlTransaction tx,
         string hasNextQuery,
-        CompleteCommandFactory completeCommandFactory)
+        BatchCompleter completer)
         : IBatchContext
     {
         public IReadOnlyCollection<IMessage> Messages => messages;
 
         public async Task CompleteAsync(IReadOnlyCollection<IMessage> ok, CancellationToken ct)
         {
-            if (ok.Count > 0)
-            {
-                await using var command = completeCommandFactory(ok, connection, tx);
-                var completed = await command.ExecuteNonQueryAsync(ct);
-
-                if (completed != ok.Count)
-                {
-                    // think if this is the best way to handle this (considering this shouldn't happen, probably it's good enough)
-                    await tx.RollbackAsync(ct);
-                    throw new InvalidOperationException("Failed to complete messages");
-                }
-
-                await tx.CommitAsync(ct);
-            }
-            else
+            if (ok.Count <= 0)
             {
                 await tx.RollbackAsync(ct);
+                return;
             }
+
+            await completer.CompleteAsync(ok, connection, tx, ct);
+            await tx.CommitAsync(ct);
         }
 
         public async Task<bool> HasNextAsync(CancellationToken ct)
@@ -145,59 +122,11 @@ internal sealed class SelectForUpdateBatchFetcher : IBatchFetcher
         public ValueTask DisposeAsync() => connection.DisposeAsync();
     }
 
-    private static NpgsqlCommand CreateDeleteCommand(
-        string deleteQuery,
-        Func<IMessage, object> idGetter,
-        IReadOnlyCollection<IMessage> ok,
-        NpgsqlConnection connection,
-        NpgsqlTransaction tx)
-    {
-        var idParams = string.Join(", ", Enumerable.Range(0, ok.Count).Select(i => $"@id{i}"));
-        var command = new NpgsqlCommand(string.Format(deleteQuery, idParams), connection, tx);
-
-        var i = 0;
-        foreach (var m in ok)
-        {
-            command.Parameters.AddWithValue($"id{i}", idGetter(m));
-            i++;
-        }
-
-        return command;
-    }
-
-    private static NpgsqlCommand CreateUpdateCommand(
-        string updateQuery,
-        TimeProvider timeProvider,
-        Func<IMessage, object> idGetter,
-        IReadOnlyCollection<IMessage> ok,
-        NpgsqlConnection connection,
-        NpgsqlTransaction tx)
-    {
-        var idParams = string.Join(", ", Enumerable.Range(0, ok.Count).Select(i => $"@id{i}"));
-        var command = new NpgsqlCommand(string.Format(updateQuery, idParams), connection, tx);
-        command.Parameters.AddWithValue("processedAt", timeProvider.GetUtcNow().DateTime);
-
-        var i = 0;
-        foreach (var m in ok)
-        {
-            command.Parameters.AddWithValue($"id{i}", idGetter(m));
-            i++;
-        }
-
-        return command;
-    }
-
     private static string SetupHasNextQuery(PostgreSqlPollingSettings pollingSettings, TableConfiguration tableCfg) =>
         pollingSettings.CompletionMode == CompletionMode.Delete
             ? $"SELECT EXISTS(SELECT 1 FROM {tableCfg.Name.Quote()} LIMIT 1);"
             : $"SELECT EXISTS(SELECT 1 FROM {tableCfg.Name.Quote()} WHERE {tableCfg.ProcessedAtColumn.Quote()} IS NULL LIMIT 1);";
-
-    private static string SetupUpdateQuery(TableConfiguration tableCfg) =>
-        $"UPDATE {tableCfg.Name.Quote()} SET {tableCfg.ProcessedAtColumn.Quote()} = @processedAt WHERE {tableCfg.IdColumn.Quote()} IN ({{0}});";
-
-    private static string SetupDeleteQuery(TableConfiguration tableCfg) =>
-        $"DELETE FROM {tableCfg.Name.Quote()} WHERE {tableCfg.IdColumn.Quote()} IN ({{0}});";
-
+    
     private static string SetupSelectQuery(PostgreSqlPollingSettings pollingSettings, TableConfiguration tableCfg) =>
         pollingSettings.CompletionMode == CompletionMode.Delete
             ? $"""
