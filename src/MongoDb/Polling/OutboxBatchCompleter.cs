@@ -5,7 +5,7 @@ using YakShaveFx.OutboxKit.Core.Polling;
 
 namespace YakShaveFx.OutboxKit.MongoDb.Polling;
 
-internal sealed class OutboxBatchCompleter<TMessage, TId> : ICompleteRetrier where TMessage : IMessage
+internal sealed class OutboxBatchCompleter<TMessage, TId> : IProducedMessagesCompletionRetrier where TMessage : IMessage
 {
     private readonly IMongoCollection<TMessage> _collection;
     private readonly TimeProvider _timeProvider;
@@ -43,7 +43,7 @@ internal sealed class OutboxBatchCompleter<TMessage, TId> : ICompleteRetrier whe
 
     public Task CompleteAsync(IReadOnlyCollection<IMessage> messages, CancellationToken ct) => _complete(messages, ct);
     
-    Task ICompleteRetrier.RetryCompleteAsync(IReadOnlyCollection<IMessage> messages, CancellationToken ct)
+    Task IProducedMessagesCompletionRetrier.RetryCompleteAsync(IReadOnlyCollection<IMessage> messages, CancellationToken ct)
         => _complete(messages, ct);
 
     private async Task CompleteDeleteAsync(IReadOnlyCollection<IMessage> messages, CancellationToken ct)

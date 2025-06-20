@@ -3,7 +3,7 @@ namespace YakShaveFx.OutboxKit.Core.Polling;
 /// <summary>
 /// Interface to be implemented by library users, to make it possible to retry completing messages already produced.
 /// </summary>
-public interface ICompleteRetrier
+public interface IProducedMessagesCompletionRetrier
 {
     /// <summary>
     /// <para>Completes the given collection of messages.</para>

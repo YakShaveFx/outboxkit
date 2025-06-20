@@ -220,7 +220,7 @@ internal sealed class PollingOutboxKitConfigurator : IPollingOutboxKitConfigurat
                     collectionSettings,
                     s.GetRequiredKeyedService<Func<OutboxKey, IServiceProvider, IMongoDatabase>>(key)(key, s)));
             
-            services.AddKeyedSingleton<ICompleteRetrier>(
+            services.AddKeyedSingleton<IProducedMessagesCompletionRetrier>(
                 key,
                 (s, _) => s.GetRequiredKeyedService<OutboxBatchCompleter<TMessage, TId>>(key));
             

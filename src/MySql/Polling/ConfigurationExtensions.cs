@@ -239,7 +239,7 @@ internal sealed class PollingOutboxKitConfigurator : IPollingOutboxKitConfigurat
             s.GetRequiredKeyedService<MySqlDataSource>(key),
             s.GetRequiredService<TimeProvider>()));
 
-        services.AddKeyedSingleton<ICompleteRetrier>(key, (s, _) => s.GetRequiredKeyedService<BatchCompleter>(key));
+        services.AddKeyedSingleton<IProducedMessagesCompletionRetrier>(key, (s, _) => s.GetRequiredKeyedService<BatchCompleter>(key));
 
         services
             .AddKeyedMySqlDataSource(key, _connectionString)

@@ -62,7 +62,7 @@ public class BatchCompleterTests(PostgreSqlFixture postgresFixture)
             .InitAsync();
         await using var connection = await dbCtx.DataSource.OpenConnectionAsync(_ct);
 
-        ICompleteRetrier sut = new BatchCompleter(postgresSettings, tableConfig, dbCtx.DataSource, TimeProvider.System);
+        IProducedMessagesCompletionRetrier sut = new BatchCompleter(postgresSettings, tableConfig, dbCtx.DataSource, TimeProvider.System);
         var messages = await GetMessagesAsync(connection, _ct);
         (await AreMessagesCompletedAsync(messages, connection, completionMode)).Should().BeFalse();
         await sut.RetryCompleteAsync(messages, _ct);
@@ -82,7 +82,7 @@ public class BatchCompleterTests(PostgreSqlFixture postgresFixture)
             .InitAsync();
         await using var connection = await dbCtx.DataSource.OpenConnectionAsync(_ct);
 
-        ICompleteRetrier sut = new BatchCompleter(postgresSettings, tableConfig, dbCtx.DataSource, TimeProvider.System);
+        IProducedMessagesCompletionRetrier sut = new BatchCompleter(postgresSettings, tableConfig, dbCtx.DataSource, TimeProvider.System);
 
         var messages = await GetMessagesAsync(connection, _ct);
         await CompleteMessagesAsync(messages, connection, completionMode);

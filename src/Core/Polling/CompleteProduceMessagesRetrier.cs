@@ -1,5 +1,3 @@
-using Microsoft.Extensions.Logging;
-
 namespace YakShaveFx.OutboxKit.Core.Polling;
 
 internal interface ICollectProducedMessagesToRetryCompletion
@@ -14,9 +12,8 @@ internal interface IRetryCompletionOfProducedMessages
 
 // not thread safe, as it is only used in the context of a producing flow, which has no concurrency
 internal sealed class CompleteProduceMessagesRetrier(
-    ICompleteRetrier completeRetrier,
-    RetrierBuilderFactory retrierBuilderFactory,
-    ILogger<CompleteProduceMessagesRetrier> logger)
+    IProducedMessagesCompletionRetrier completionRetrier,
+    RetrierBuilderFactory retrierBuilderFactory)
     : ICollectProducedMessagesToRetryCompletion, IRetryCompletionOfProducedMessages
 {
     private readonly Retrier _retrier = retrierBuilderFactory.Create()
@@ -40,20 +37,12 @@ internal sealed class CompleteProduceMessagesRetrier(
 
     private async Task InnerRetryCompleteAsync(CancellationToken ct)
     {
-        try
-        {
-            await _retrier.ExecuteWithRetryAsync(
-                () => completeRetrier.RetryCompleteAsync(_messages, ct),
-                ct);
+        await _retrier.ExecuteWithRetryAsync(
+            () => completionRetrier.RetryCompleteAsync(_messages, ct),
+            ct);
 
-            // since most of the time there are no messages to retry
-            // clear messages by creating a new list, so the old one can be garbage collected
-            // avoiding the underlying array to be kept in memory
-            _messages = new();
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error retrying completion of previously produced messages");
-        }
+        // since most of the time there are no messages to retry, we clear messages by creating a new list,
+        // so the old one can be garbage collected, avoiding the underlying array to be kept in memory
+        _messages = new();
     }
 }

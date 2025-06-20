@@ -6,7 +6,7 @@ using YakShaveFx.OutboxKit.PostgreSql.Shared;
 namespace YakShaveFx.OutboxKit.PostgreSql.Polling;
 
 // ReSharper disable once ClassNeverInstantiated.Global - automagically instantiated by DI
-internal sealed class BatchCompleter : ICompleteRetrier
+internal sealed class BatchCompleter : IProducedMessagesCompletionRetrier
 {
     private delegate NpgsqlCommand CompleteCommandFactory(
         IReadOnlyCollection<IMessage> ok, NpgsqlConnection connection, NpgsqlTransaction? tx);
@@ -59,7 +59,7 @@ internal sealed class BatchCompleter : ICompleteRetrier
         if (completed != messages.Count) throw new InvalidOperationException("Failed to complete messages");
     }
 
-    async Task ICompleteRetrier.RetryCompleteAsync(IReadOnlyCollection<IMessage> messages, CancellationToken ct)
+    async Task IProducedMessagesCompletionRetrier.RetryCompleteAsync(IReadOnlyCollection<IMessage> messages, CancellationToken ct)
     {
         if (messages.Count <= 0) return;
 
