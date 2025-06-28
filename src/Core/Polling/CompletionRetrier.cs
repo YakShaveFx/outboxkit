@@ -60,11 +60,11 @@ internal sealed partial class CompletionRetrier(
                 {
                     await providerCompletionRetrier.RetryAsync(_messages, ct);
                     
+                    metrics.MessagesCompleted(key, _messages.Count);
+                    
                     // since most of the time there are no messages to retry, we clear messages by creating a new list,
                     // so the old one can be garbage collected, avoiding the underlying array to be kept in memory
                     _messages = [];
-                    
-                    metrics.MessagesCompleted(key, _messages.Count);
                 }
                 catch (Exception ex)
                 {
