@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using YakShaveFx.OutboxKit.Core.OpenTelemetry;
@@ -24,22 +25,30 @@ internal sealed partial class CleanUpBackgroundService(
         {
             try
             {
-                using var activity = ActivityHelpers.StartActivity("clean processed outbox messages", key);
-                try
+                using (var activity = ActivityHelpers.StartActivity("clean processed outbox messages", key))
                 {
-                    var cleaned = await cleaner.CleanAsync(stoppingToken);
-                    metrics.MessagesCleaned(key, cleaned);
-                    activity?.SetTag(ActivityConstants.OutboxCleanedCountTag, cleaned);
-                }
-                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-                {
-                    // expected when the service is stopping, let it stop gracefully
-                    continue;
-                }
-                catch (Exception ex)
-                {
-                    // we don't want the background service to stop while the application continues, so catching and logging
-                    LogUnexpectedError(logger, key.ProviderKey, key.ClientKey, ex);
+                    try
+                    {
+                        var cleaned = await cleaner.CleanAsync(stoppingToken);
+                        metrics.MessagesCleaned(key, cleaned);
+                        activity?.SetTag(ActivityConstants.OutboxCleanedCountTag, cleaned);
+                    }
+                    catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                    {
+                        // expected when the service is stopping, let it stop gracefully
+                        continue;
+                    }
+                    catch (Exception ex)
+                    {
+                        // we don't want the background service to stop while the application continues, so catching and logging
+                        LogUnexpectedError(logger, key.ProviderKey, key.ClientKey, ex);
+                        activity?.SetStatus(ActivityStatusCode.Error);
+                        activity?.RecordException(ex, new TagList
+                        {
+                            { ActivityConstants.OutboxProviderKeyTag, key.ProviderKey },
+                            { ActivityConstants.OutboxClientKeyTag, key.ClientKey }
+                        });
+                    }
                 }
 
                 await Task.Delay(_cleanUpInterval, timeProvider, stoppingToken);
@@ -57,13 +66,16 @@ internal sealed partial class CleanUpBackgroundService(
         LogLevel.Debug,
         Message =
             "Starting outbox clean up service for provider key \"{providerKey}\" and client key \"{clientKey}\", with clean up interval {cleanUpInterval}")]
-    private static partial void LogStarting(ILogger logger, string providerKey, string clientKey, TimeSpan cleanUpInterval);
+    private static partial void LogStarting(ILogger logger, string providerKey, string clientKey,
+        TimeSpan cleanUpInterval);
 
     [LoggerMessage(LogLevel.Debug,
-        Message = "Shutting down outbox clean up service for provider key \"{providerKey}\" and client key \"{clientKey}\"")]
+        Message =
+            "Shutting down outbox clean up service for provider key \"{providerKey}\" and client key \"{clientKey}\"")]
     private static partial void LogStopping(ILogger logger, string providerKey, string clientKey);
 
     [LoggerMessage(LogLevel.Error,
-        Message = "Unexpected error while cleaning outbox messages for provider key \"{providerKey}\" and client key \"{clientKey}\"")]
+        Message =
+            "Unexpected error while cleaning outbox messages for provider key \"{providerKey}\" and client key \"{clientKey}\"")]
     private static partial void LogUnexpectedError(ILogger logger, string providerKey, string clientKey, Exception ex);
 }
