@@ -66,6 +66,11 @@ internal sealed partial class CompletionRetrier(
                 {
                     LogRetryFailed(logger, key.ProviderKey, key.ClientKey, ex);
                     activity?.SetStatus(ActivityStatusCode.Error);
+                    activity?.RecordException(ex, new TagList
+                    {
+                        { ActivityConstants.OutboxProviderKeyTag, key.ProviderKey },
+                        { ActivityConstants.OutboxClientKeyTag, key.ClientKey }
+                    });
                     throw;
                 }
             },

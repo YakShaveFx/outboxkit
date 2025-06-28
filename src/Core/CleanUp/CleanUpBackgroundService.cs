@@ -43,6 +43,11 @@ internal sealed partial class CleanUpBackgroundService(
                         // we don't want the background service to stop while the application continues, so catching and logging
                         LogUnexpectedError(logger, key.ProviderKey, key.ClientKey, ex);
                         activity?.SetStatus(ActivityStatusCode.Error);
+                        activity?.RecordException(ex, new TagList
+                        {
+                            { ActivityConstants.OutboxProviderKeyTag, key.ProviderKey },
+                            { ActivityConstants.OutboxClientKeyTag, key.ClientKey }
+                        });
                     }
                 }
 

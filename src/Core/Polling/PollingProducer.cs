@@ -55,6 +55,11 @@ internal sealed partial class PollingProducer(
         {
             LogCompletionUnexpectedError(logger, key.ProviderKey, key.ClientKey, ex);
             activity?.SetStatus(ActivityStatusCode.Error);
+            activity?.RecordException(ex, new TagList
+            {
+                { ActivityConstants.OutboxProviderKeyTag, key.ProviderKey },
+                { ActivityConstants.OutboxClientKeyTag, key.ClientKey }
+            });
             completionRetryCollector.Collect(result.Ok);
             
             // return false to break the loop, as we don't want to produce more messages until we're able to complete the batch
