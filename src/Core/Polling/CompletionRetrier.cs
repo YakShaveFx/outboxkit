@@ -38,7 +38,7 @@ internal sealed partial class CompletionRetrier(
     public void Collect(IReadOnlyCollection<IMessage> messages)
     {
         _messages.AddRange(messages);
-        metrics.NewMessagesPendingRetry(key, _messages.Count);
+        metrics.NewMessagesPendingRetry(key, messages.Count);
     }
 
     public ValueTask RetryAsync(CancellationToken ct)
