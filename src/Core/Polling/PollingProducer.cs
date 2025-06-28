@@ -13,7 +13,7 @@ internal sealed partial class PollingProducer(
     OutboxKey key,
     IBatchFetcher fetcher,
     IBatchProducer producer,
-    ICollectProducedMessagesToRetryCompletion completeRetryCollector,
+    ICompletionRetryCollector completionRetryCollector,
     ProducerMetrics metrics,
     ILogger<PollingProducer> logger) : IPollingProducer
 {
@@ -53,7 +53,7 @@ internal sealed partial class PollingProducer(
         catch (Exception ex)
         {
             LogCompletionUnexpectedError(logger, key.ProviderKey, key.ClientKey, ex);
-            completeRetryCollector.Collect(result.Ok);
+            completionRetryCollector.Collect(result.Ok);
             
             // return false to break the loop, as we don't want to produce more messages until we're able to complete the batch
             return false;

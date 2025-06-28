@@ -6,7 +6,7 @@ using YakShaveFx.OutboxKit.MongoDb.Synchronization;
 namespace YakShaveFx.OutboxKit.MongoDb.Polling;
 
 // ReSharper disable once ClassNeverInstantiated.Global - automagically instantiated by DI
-internal sealed class OutboxBatchFetcher<TMessage, TId> : IBatchFetcher where TMessage : IMessage
+internal sealed class BatchFetcher<TMessage, TId> : IBatchFetcher where TMessage : IMessage
 {
     private readonly IMongoCollection<TMessage> _collection;
     private readonly DistributedLockThingy _lockThingy;
@@ -18,16 +18,16 @@ internal sealed class OutboxBatchFetcher<TMessage, TId> : IBatchFetcher where TM
     private readonly FilterDefinition<TMessage> _findFilter;
     private readonly SortDefinition<TMessage> _sort;
     private readonly Func<CancellationToken, Task<bool>> _hasNext;
-    private readonly OutboxBatchCompleter<TMessage, TId> _completer;
+    private readonly BatchCompleter<TMessage, TId> _completer;
 
-    public OutboxBatchFetcher(
+    public BatchFetcher(
         OutboxKey key,
         MongoDbPollingSettings pollingSettings,
         MongoDbPollingCollectionSettings<TMessage, TId> collectionSettings,
         MongoDbPollingDistributedLockSettings lockSettings,
         IMongoDatabase db,
         DistributedLockThingy lockThingy,
-        OutboxBatchCompleter<TMessage, TId> completer)
+        BatchCompleter<TMessage, TId> completer)
     {
         _lockId = lockSettings.Id;
         _lockOwner = lockSettings.Owner;
@@ -91,7 +91,7 @@ internal sealed class OutboxBatchFetcher<TMessage, TId> : IBatchFetcher where TM
 
     private class BatchContext(
         IReadOnlyCollection<IMessage> messages,
-        OutboxBatchCompleter<TMessage, TId> completer,
+        BatchCompleter<TMessage, TId> completer,
         Func<CancellationToken, Task<bool>> hasNext,
         IDistributedLock @lock) : IBatchContext
     {

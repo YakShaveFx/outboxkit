@@ -9,7 +9,7 @@ internal sealed partial class PollingBackgroundService(
     IPollingProducer producer,
     TimeProvider timeProvider,
     CorePollingSettings settings,
-    IRetryCompletionOfProducedMessages completeRetrier,
+    ICompletionRetrier completionRetrier,
     ILogger<PollingBackgroundService> logger) : BackgroundService
 {
     private readonly TimeSpan _pollingInterval = settings.PollingInterval;
@@ -24,7 +24,7 @@ internal sealed partial class PollingBackgroundService(
         {
             try
             {
-                await completeRetrier.RetryCompleteAsync(stoppingToken);
+                await completionRetrier.RetryAsync(stoppingToken);
                 
                 try
                 {

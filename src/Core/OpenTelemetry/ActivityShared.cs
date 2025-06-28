@@ -8,7 +8,13 @@ internal static class ActivityHelpers
         Constants.ActivitySourceName,
         typeof(ActivityHelpers).Assembly.GetName().Version!.ToString());
 
-    public static Activity? StartActivity(string activityName, OutboxKey key)
+    public static Activity? StartActivity(string activityName, OutboxKey key) 
+        => StartActivity(activityName, key, []);
+
+    public static Activity? StartActivity(
+        string activityName,
+        OutboxKey key,
+        ReadOnlySpan<KeyValuePair<string, object?>> tags)
     {
         if (!ActivitySource.HasListeners())
         {
@@ -22,7 +28,8 @@ internal static class ActivityHelpers
             tags:
             [
                 new(ActivityConstants.OutboxProviderKeyTag, key.ProviderKey),
-                new(ActivityConstants.OutboxClientKeyTag, key.ClientKey)
+                new(ActivityConstants.OutboxClientKeyTag, key.ClientKey),
+                ..tags
             ]);
     }
 }
@@ -33,4 +40,5 @@ internal static class ActivityConstants
     public const string OutboxClientKeyTag = "outbox.client_key";
     public const string OutboxBatchSizeTag = "outbox.batch.size";
     public const string OutboxCleanedCountTag = "outbox.cleaned.count";
+    public const string OutboxProducedMessagesToCompleteTag = "outbox.produced_messages_to_complete";
 }

@@ -62,10 +62,10 @@ public class BatchCompleterTests(MySqlFixture mySqlFixture)
             .InitAsync();
         await using var connection = await dbCtx.DataSource.OpenConnectionAsync(_ct);
 
-        IProducedMessagesCompletionRetrier sut = new BatchCompleter(mySqlSettings, tableConfig, dbCtx.DataSource, TimeProvider.System);
+        IBatchCompleteRetrier sut = new BatchCompleter(mySqlSettings, tableConfig, dbCtx.DataSource, TimeProvider.System);
         var messages = await GetMessagesAsync(connection, _ct);
         (await AreMessagesCompletedAsync(messages, connection, completionMode)).Should().BeFalse();
-        await sut.RetryCompleteAsync(messages, _ct);
+        await sut.RetryAsync(messages, _ct);
         (await AreMessagesCompletedAsync(messages, connection, completionMode)).Should().BeTrue();
     }
 
@@ -82,12 +82,12 @@ public class BatchCompleterTests(MySqlFixture mySqlFixture)
             .InitAsync();
         await using var connection = await dbCtx.DataSource.OpenConnectionAsync(_ct);
 
-        IProducedMessagesCompletionRetrier sut = new BatchCompleter(mySqlSettings, tableConfig, dbCtx.DataSource, TimeProvider.System);
+        IBatchCompleteRetrier sut = new BatchCompleter(mySqlSettings, tableConfig, dbCtx.DataSource, TimeProvider.System);
 
         var messages = await GetMessagesAsync(connection, _ct);
         await CompleteMessagesAsync(messages, connection, completionMode);
         (await AreMessagesCompletedAsync(messages, connection, completionMode)).Should().BeTrue();
-        await sut.RetryCompleteAsync(messages, _ct);
+        await sut.RetryAsync(messages, _ct);
         (await AreMessagesCompletedAsync(messages, connection, completionMode)).Should().BeTrue();
     }
 

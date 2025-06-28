@@ -39,6 +39,7 @@ public static class ServiceCollectionExtensions
     private static void AddOutboxKitPolling(IServiceCollection services, OutboxKitConfigurator configurator)
     {
         services.AddSingleton<ProducerMetrics>();
+        services.AddSingleton<CompletionRetrierMetrics>();
         services.AddSingleton<RetrierBuilderFactory>();
 
         if (configurator.PollingConfigurators.Count == 1)
@@ -75,26 +76,28 @@ public static class ServiceCollectionExtensions
                 s.GetRequiredKeyedService<IPollingProducer>(key),
                 s.GetRequiredService<TimeProvider>(),
                 corePollingSettings,
-                s.GetRequiredKeyedService<IRetryCompletionOfProducedMessages>(key),
+                s.GetRequiredKeyedService<ICompletionRetrier>(key),
                 s.GetRequiredService<ILogger<PollingBackgroundService>>()));
 
             services.AddKeyedSingleton(
                 key,
-                (s, _) => new CompleteProduceMessagesRetrier(
-                    s.GetRequiredKeyedService<IProducedMessagesCompletionRetrier>(key),
-                    s.GetRequiredService<RetrierBuilderFactory>()));
+                (s, _) => new CompletionRetrier(
+                    key,
+                    s.GetRequiredKeyedService<IBatchCompleteRetrier>(key),
+                    s.GetRequiredService<RetrierBuilderFactory>(),
+                    s.GetRequiredService<CompletionRetrierMetrics>()));
             
-            services.AddKeyedSingleton<ICollectProducedMessagesToRetryCompletion>(key,
-                (s, _) => s.GetRequiredKeyedService<CompleteProduceMessagesRetrier>(key));
+            services.AddKeyedSingleton<ICompletionRetryCollector>(key,
+                (s, _) => s.GetRequiredKeyedService<CompletionRetrier>(key));
             
-            services.AddKeyedSingleton<IRetryCompletionOfProducedMessages>(key,
-                (s, _) => s.GetRequiredKeyedService<CompleteProduceMessagesRetrier>(key));
+            services.AddKeyedSingleton<ICompletionRetrier>(key,
+                (s, _) => s.GetRequiredKeyedService<CompletionRetrier>(key));
             
             services.AddKeyedSingleton<IPollingProducer>(key, (s, _) => new PollingProducer(
                 key,
                 s.GetRequiredKeyedService<IBatchFetcher>(key),
                 s.GetRequiredService<IBatchProducer>(),
-                s.GetRequiredKeyedService<ICollectProducedMessagesToRetryCompletion>(key),
+                s.GetRequiredKeyedService<ICompletionRetryCollector>(key),
                 s.GetRequiredService<ProducerMetrics>(),
                 s.GetRequiredService<ILogger<PollingProducer>>()));
             

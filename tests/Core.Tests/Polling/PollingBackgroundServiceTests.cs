@@ -13,7 +13,7 @@ public class PollingBackgroundServiceTests
     private readonly Listener _listener = new();
     private readonly FakeTimeProvider _timeProvider = new();
     private readonly CorePollingSettings _settings = new();
-    private readonly IRetryCompletionOfProducedMessages _completeRetrierStub = new CompleteRetrierStub();
+    private readonly ICompletionRetrier _completionRetrierStub = new CompleteRetrierStub();
     private readonly CancellationToken _ct = TestContext.Current.CancellationToken;
 
     [Fact]
@@ -21,7 +21,7 @@ public class PollingBackgroundServiceTests
     {
         var producerSpy = Substitute.For<IPollingProducer>();
         var sut = new PollingBackgroundService(Key, _listener, producerSpy, _timeProvider, _settings,
-            _completeRetrierStub, Logger);
+            _completionRetrierStub, Logger);
 
         await sut.StartAsync(CancellationToken.None);
         await Task.Delay(TimeSpan.FromMilliseconds(100), _ct); // give it a bit to run and block
@@ -34,7 +34,7 @@ public class PollingBackgroundServiceTests
     {
         var producerSpy = Substitute.For<IPollingProducer>();
         var sut = new PollingBackgroundService(Key, _listener, producerSpy, _timeProvider, _settings,
-            _completeRetrierStub, Logger);
+            _completionRetrierStub, Logger);
 
         await sut.StartAsync(CancellationToken.None);
         await Task.Delay(TimeSpan.FromMilliseconds(100), _ct); // give it a bit to run and block
@@ -51,7 +51,7 @@ public class PollingBackgroundServiceTests
     {
         var producerSpy = Substitute.For<IPollingProducer>();
         var sut = new PollingBackgroundService(Key, _listener, producerSpy, _timeProvider, _settings,
-            _completeRetrierStub, Logger);
+            _completionRetrierStub, Logger);
 
         await sut.StartAsync(CancellationToken.None);
         await Task.Delay(TimeSpan.FromMilliseconds(100), _ct); // give it a bit to run and block
@@ -69,7 +69,7 @@ public class PollingBackgroundServiceTests
     {
         var producerSpy = Substitute.For<IPollingProducer>();
         var sut = new PollingBackgroundService(Key, _listener, producerSpy, _timeProvider, _settings,
-            _completeRetrierStub, Logger);
+            _completionRetrierStub, Logger);
 
         await sut.StartAsync(CancellationToken.None);
         await Task.Delay(TimeSpan.FromMilliseconds(100), _ct); // give it a bit to run and block
@@ -86,7 +86,7 @@ public class PollingBackgroundServiceTests
     {
         var producerStub = Substitute.For<IPollingProducer>();
         var sut = new PollingBackgroundService(Key, _listener, producerStub, _timeProvider, _settings,
-            _completeRetrierStub, Logger);
+            _completionRetrierStub, Logger);
 
         var cts = new CancellationTokenSource();
 
@@ -108,7 +108,7 @@ public class PollingBackgroundServiceTests
             .Throw(new InvalidOperationException("test"));
 
         var sut = new PollingBackgroundService(Key, _listener, producerMock, _timeProvider, _settings,
-            _completeRetrierStub, Logger);
+            _completionRetrierStub, Logger);
 
         await sut.StartAsync(CancellationToken.None);
         await Task.Delay(TimeSpan.FromMilliseconds(10), CancellationToken.None); // give it a bit to run and block
@@ -120,14 +120,14 @@ public class PollingBackgroundServiceTests
     public async Task WhenThereAreMessagesToRetryCompletingThenTheRetrierIsInvoked()
     {
         var producerStub = Substitute.For<IPollingProducer>();
-        var retrierSpy = Substitute.For<IRetryCompletionOfProducedMessages>();
+        var retrierSpy = Substitute.For<ICompletionRetrier>();
         var sut = new PollingBackgroundService(Key, _listener, producerStub, _timeProvider, _settings,
             retrierSpy, Logger);
 
         await sut.StartAsync(CancellationToken.None);
         await Task.Delay(TimeSpan.FromMilliseconds(100), _ct); // give it a bit to run
 
-        await retrierSpy.Received(1).RetryCompleteAsync(Arg.Any<CancellationToken>());
+        await retrierSpy.Received(1).RetryAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -135,9 +135,9 @@ public class PollingBackgroundServiceTests
     {
         var retryCompletionSource = new TaskCompletionSource();
         var producerSpy = Substitute.For<IPollingProducer>();
-        var retrierMock = Substitute.For<IRetryCompletionOfProducedMessages>();
+        var retrierMock = Substitute.For<ICompletionRetrier>();
 #pragma warning disable CA2012 - mocking, not actually calling the method
-        retrierMock.RetryCompleteAsync(Arg.Any<CancellationToken>()).Returns(new ValueTask(retryCompletionSource.Task));
+        retrierMock.RetryAsync(Arg.Any<CancellationToken>()).Returns(new ValueTask(retryCompletionSource.Task));
 #pragma warning restore CA2012
 
         var sut = new PollingBackgroundService(Key, _listener, producerSpy, _timeProvider, _settings,
@@ -146,7 +146,7 @@ public class PollingBackgroundServiceTests
         await sut.StartAsync(CancellationToken.None);
         await Task.Delay(TimeSpan.FromMilliseconds(100), _ct); // give it a bit to run
         
-        await retrierMock.Received(1).RetryCompleteAsync(Arg.Any<CancellationToken>());
+        await retrierMock.Received(1).RetryAsync(Arg.Any<CancellationToken>());
         await producerSpy.DidNotReceive().ProducePendingAsync(Arg.Any<CancellationToken>());
 
         retryCompletionSource.SetResult();
@@ -155,7 +155,7 @@ public class PollingBackgroundServiceTests
     }
 }
 
-file sealed class CompleteRetrierStub : IRetryCompletionOfProducedMessages
+file sealed class CompleteRetrierStub : ICompletionRetrier
 {
-    public ValueTask RetryCompleteAsync(CancellationToken ct) => ValueTask.CompletedTask;
+    public ValueTask RetryAsync(CancellationToken ct) => ValueTask.CompletedTask;
 }

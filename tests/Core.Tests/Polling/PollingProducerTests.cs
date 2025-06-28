@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
+using NSubstitute.Core.Arguments;
 using YakShaveFx.OutboxKit.Core.OpenTelemetry;
 using YakShaveFx.OutboxKit.Core.Polling;
 using static YakShaveFx.OutboxKit.Core.Tests.OpenTelemetryHelpers;
@@ -12,15 +13,14 @@ public class PollingProducerTests
     private static readonly ProducerMetrics Metrics = new(CreateMeterFactoryStub());
     private static readonly NullLogger<PollingProducer> Logger = NullLogger<PollingProducer>.Instance;
 
-    private static readonly ICollectProducedMessagesToRetryCompletion CompleteRetrierStub =
-        new CompleteRetryCollectorStub();
+    private static readonly ICompletionRetryCollector CompleteRetryStub = new CompleteRetryRetryCollectorStub();
 
     [Fact]
     public async Task WhenBatchIsEmptyThenProducerIsNotInvoked()
     {
         var producerSpy = CreateProducer();
         var fetcherStub = new BatchFetcherStub([new BatchContextStub([], false)]);
-        var sut = new PollingProducer(Key, fetcherStub, producerSpy, CompleteRetrierStub, Metrics, Logger);
+        var sut = new PollingProducer(Key, fetcherStub, producerSpy, CompleteRetryStub, Metrics, Logger);
 
         await sut.ProducePendingAsync(CancellationToken.None);
 
@@ -37,7 +37,7 @@ public class PollingProducerTests
     {
         var producerSpy = CreateProducer();
         var fetcherStub = new BatchFetcherStub(CreateBatchContexts(numberOfBatches));
-        var sut = new PollingProducer(Key, fetcherStub, producerSpy, CompleteRetrierStub, Metrics, Logger);
+        var sut = new PollingProducer(Key, fetcherStub, producerSpy, CompleteRetryStub, Metrics, Logger);
 
         await sut.ProducePendingAsync(CancellationToken.None);
 
@@ -51,7 +51,7 @@ public class PollingProducerTests
     {
         var producerSpy = CreateProducer();
         var fetcherStub = new BatchFetcherStub([new BatchContextStub([new MessageStub()], false, true)]);
-        var collectorSpy = Substitute.For<ICollectProducedMessagesToRetryCompletion>();
+        var collectorSpy = Substitute.For<ICompletionRetryCollector>();
         var sut = new PollingProducer(Key, fetcherStub, producerSpy, collectorSpy, Metrics, Logger);
 
         await sut.ProducePendingAsync(CancellationToken.None);
@@ -72,7 +72,7 @@ public class PollingProducerTests
     {
         var producerSpy = Substitute.For<IBatchProducer>();
         producerSpy
-            .ProduceAsync(default!, default!, default)
+            .ProduceAsync(Arg.Any<OutboxKey>(), Arg.Any<IReadOnlyCollection<IMessage>>(), Arg.Any<CancellationToken>())
             .ReturnsForAnyArgs(args =>
                 Task.FromResult(new BatchProduceResult { Ok = (IReadOnlyCollection<IMessage>)args[1] }));
         return producerSpy;
@@ -104,7 +104,7 @@ file sealed class BatchContextStub(IReadOnlyCollection<IMessage> messages, bool 
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 }
 
-file sealed class CompleteRetryCollectorStub : ICollectProducedMessagesToRetryCompletion
+file sealed class CompleteRetryRetryCollectorStub : ICompletionRetryCollector
 {
     public void Collect(IReadOnlyCollection<IMessage> messages)
     {
