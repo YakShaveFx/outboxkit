@@ -13,7 +13,7 @@ public class PollingBackgroundServiceTests
     private readonly Listener _listener = new();
     private readonly FakeTimeProvider _timeProvider = new();
     private readonly CorePollingSettings _settings = new();
-    private readonly ICompletionRetrier _completionRetrierStub = new CompleteRetrierStub();
+    private readonly ICompletionRetrier _completionRetrierStub = Substitute.For<ICompletionRetrier>();
     private readonly CancellationToken _ct = TestContext.Current.CancellationToken;
 
     [Fact]
@@ -119,9 +119,11 @@ public class PollingBackgroundServiceTests
     [Fact]
     public async Task WhenThereAreMessagesToRetryCompletingThenTheRetrierIsInvoked()
     {
-        var producerStub = Substitute.For<IPollingProducer>();
+        var producerMock = Substitute.For<IPollingProducer>();
+        producerMock.ProducePendingAsync(Arg.Any<CancellationToken>())
+            .Returns(ProducePendingResult.CompleteError, ProducePendingResult.AllDone);
         var retrierSpy = Substitute.For<ICompletionRetrier>();
-        var sut = new PollingBackgroundService(Key, _listener, producerStub, _timeProvider, _settings,
+        var sut = new PollingBackgroundService(Key, _listener, producerMock, _timeProvider, _settings,
             retrierSpy, Logger);
 
         await sut.StartAsync(CancellationToken.None);
@@ -134,28 +136,34 @@ public class PollingBackgroundServiceTests
     public async Task WhenThereAreMessagesToRetryCompletingThenTheProducerIsNotInvokedUntilTheyAreCompleted()
     {
         var retryCompletionSource = new TaskCompletionSource();
-        var producerSpy = Substitute.For<IPollingProducer>();
+        var producerMock = Substitute.For<IPollingProducer>();
         var retrierMock = Substitute.For<ICompletionRetrier>();
-#pragma warning disable CA2012 - mocking, not actually calling the method
+        producerMock.ProducePendingAsync(Arg.Any<CancellationToken>())
+            .Returns(ProducePendingResult.CompleteError, ProducePendingResult.AllDone);
+#pragma warning disable CA2012 - it's configuring the mock, not actually invoking the method
         retrierMock.RetryAsync(Arg.Any<CancellationToken>()).Returns(new ValueTask(retryCompletionSource.Task));
 #pragma warning restore CA2012
 
-        var sut = new PollingBackgroundService(Key, _listener, producerSpy, _timeProvider, _settings,
+        var sut = new PollingBackgroundService(Key, _listener, producerMock, _timeProvider, _settings,
             retrierMock, Logger);
 
         await sut.StartAsync(CancellationToken.None);
         await Task.Delay(TimeSpan.FromMilliseconds(100), _ct); // give it a bit to run
-        
-        await retrierMock.Received(1).RetryAsync(Arg.Any<CancellationToken>());
-        await producerSpy.DidNotReceive().ProducePendingAsync(Arg.Any<CancellationToken>());
 
+        // producer is invoked once, before getting the error
+        await producerMock.Received(1).ProducePendingAsync(Arg.Any<CancellationToken>());
+
+        // the error causes the retrier to be invoked
+        await retrierMock.Received(1).RetryAsync(Arg.Any<CancellationToken>());
+
+        await Task.Delay(TimeSpan.FromMilliseconds(100), _ct); // give it a bit to run
+
+        // the producer is not invoked again until the retrier completes
+        await producerMock.Received(1).ProducePendingAsync(Arg.Any<CancellationToken>());
+
+        // completing the retrier will cause the producer to be invoked again
         retryCompletionSource.SetResult();
         await Task.Delay(TimeSpan.FromMilliseconds(100), _ct); // give it a bit to run
-        await producerSpy.Received(1).ProducePendingAsync(Arg.Any<CancellationToken>());
+        await producerMock.Received(2).ProducePendingAsync(Arg.Any<CancellationToken>());
     }
-}
-
-file sealed class CompleteRetrierStub : ICompletionRetrier
-{
-    public ValueTask RetryAsync(CancellationToken ct) => ValueTask.CompletedTask;
 }

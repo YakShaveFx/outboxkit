@@ -13,6 +13,7 @@ internal sealed partial class PollingBackgroundService(
     ILogger<PollingBackgroundService> logger) : BackgroundService
 {
     private readonly TimeSpan _pollingInterval = settings.PollingInterval;
+    private readonly ProduceIssueBackoffCalculator _backoffCalculator = new();
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -24,11 +25,28 @@ internal sealed partial class PollingBackgroundService(
         {
             try
             {
-                await completionRetrier.RetryAsync(stoppingToken);
-                
                 try
                 {
-                    await producer.ProducePendingAsync(stoppingToken);
+                    var result = await producer.ProducePendingAsync(stoppingToken);
+                    switch (result)
+                    {
+                        case ProducePendingResult.AllDone:
+                            _backoffCalculator.Reset();
+                            await WaitBeforeNextIteration(stoppingToken);
+                            break;
+                        case ProducePendingResult.CompleteError:
+                            _backoffCalculator.Reset();
+                            await completionRetrier.RetryAsync(stoppingToken);
+                            break;
+                        case ProducePendingResult.FetchError:
+                        case ProducePendingResult.ProduceError:
+                        case ProducePendingResult.PartialProduction:
+                            var backoff = _backoffCalculator.CalculateForResult(result);
+                            await Task.Delay(backoff, timeProvider, stoppingToken);
+                            break;
+                        default:
+                            throw new InvalidOperationException($"Unexpected {nameof(ProducePendingResult)} {result}");
+                    }
                 }
                 catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
                 {
@@ -37,11 +55,16 @@ internal sealed partial class PollingBackgroundService(
                 }
                 catch (Exception ex)
                 {
+                    // as IPollingProducer is handling a lot of potential error scenarios,
+                    // this is unlikely to happen, but better be prepared anyway
+
                     // we don't want the background service to stop while the application continues, so catching and logging
                     LogUnexpectedError(logger, key.ProviderKey, key.ClientKey, ex);
-                }
 
-                await WaitBeforeNextIteration(stoppingToken);
+                    // if we get an unexpected error, it's probably best to use the same kind of strategies as for the coded for ones
+                    var backoff = _backoffCalculator.CalculateForUnhandledException();
+                    await Task.Delay(backoff, timeProvider, stoppingToken);
+                }
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -56,7 +79,7 @@ internal sealed partial class PollingBackgroundService(
     {
         // no need to even try to wait if the service is stopping
         if (ct.IsCancellationRequested) return;
-        
+
         // to avoid letting the delays running in the background, wasting resources
         // we create a linked token, to cancel them
         using var linkedTokenSource = CancellationTokenSource.CreateLinkedTokenSource(ct);
@@ -82,10 +105,12 @@ internal sealed partial class PollingBackgroundService(
     [LoggerMessage(LogLevel.Debug,
         Message =
             "Starting outbox polling background service for provider key \"{providerKey}\" and client key \"{clientKey}\", with polling interval {pollingInterval}")]
-    private static partial void LogStarting(ILogger logger, string providerKey, string clientKey, TimeSpan pollingInterval);
+    private static partial void LogStarting(ILogger logger, string providerKey, string clientKey,
+        TimeSpan pollingInterval);
 
     [LoggerMessage(LogLevel.Debug,
-        Message = "Shutting down outbox polling background service for provider key \"{providerKey}\" and client key \"{clientKey}\"")]
+        Message =
+            "Shutting down outbox polling background service for provider key \"{providerKey}\" and client key \"{clientKey}\"")]
     private static partial void LogStopping(ILogger logger, string providerKey, string clientKey);
 
     [LoggerMessage(LogLevel.Debug,
