@@ -44,11 +44,10 @@ internal sealed partial class CompletionRetrier(
     public ValueTask RetryAsync(CancellationToken ct)
         => _messages.Count == 0
             ? ValueTask.CompletedTask
-            : new(InnerRetryCompleteAsync(ct));
+            : new(InnerRetryAsync(ct));
 
-    private async Task InnerRetryCompleteAsync(CancellationToken ct)
-    {
-        await _retrier.ExecuteWithRetryAsync(
+    private async Task InnerRetryAsync(CancellationToken ct) 
+        => await _retrier.ExecuteWithRetryAsync(
             async () =>
             {
                 metrics.CompletionRetryAttempted(key, _messages.Count);
@@ -60,6 +59,11 @@ internal sealed partial class CompletionRetrier(
                 try
                 {
                     await providerCompletionRetrier.RetryAsync(_messages, ct);
+                    
+                    // since most of the time there are no messages to retry, we clear messages by creating a new list,
+                    // so the old one can be garbage collected, avoiding the underlying array to be kept in memory
+                    _messages = [];
+                    
                     metrics.MessagesCompleted(key, _messages.Count);
                 }
                 catch (Exception ex)
@@ -75,11 +79,6 @@ internal sealed partial class CompletionRetrier(
                 }
             },
             ct);
-
-        // since most of the time there are no messages to retry, we clear messages by creating a new list,
-        // so the old one can be garbage collected, avoiding the underlying array to be kept in memory
-        _messages = [];
-    }
 
     // logging as warning instead of error, as this is a retry, it's kind of expected that something might be wrong
     [LoggerMessage(LogLevel.Warning,
