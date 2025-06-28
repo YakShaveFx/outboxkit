@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using YakShaveFx.OutboxKit.Core.OpenTelemetry;
 
 namespace YakShaveFx.OutboxKit.Core.Polling;
@@ -8,11 +9,13 @@ internal interface IPollingProducer
     Task ProducePendingAsync(CancellationToken ct);
 }
 
-internal sealed class PollingProducer(
+internal sealed partial class PollingProducer(
     OutboxKey key,
     IBatchFetcher fetcher,
     IBatchProducer producer,
-    ProducerMetrics metrics) : IPollingProducer
+    ICompletionRetryCollector completionRetryCollector,
+    ProducerMetrics metrics,
+    ILogger<PollingProducer> logger) : IPollingProducer
 {
     public async Task ProducePendingAsync(CancellationToken ct)
     {
@@ -41,10 +44,26 @@ internal sealed class PollingProducer(
         metrics.BatchProduced(key, messages.Count == result.Ok.Count);
         metrics.MessagesProduced(key, result.Ok.Count);
 
-        // messages already produced, try to ack them
-        // not passing the actual cancellation token to try to complete the batch even if the application is shutting down
-        await batchContext.CompleteAsync(result.Ok, CancellationToken.None);
+        try
+        {
+            // messages already produced, try to ack them
+            // not passing the actual cancellation token to try to complete the batch even if the application is shutting down
+            await batchContext.CompleteAsync(result.Ok, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            LogCompletionUnexpectedError(logger, key.ProviderKey, key.ClientKey, ex);
+            completionRetryCollector.Collect(result.Ok);
+            
+            // return false to break the loop, as we don't want to produce more messages until we're able to complete the batch
+            return false;
+        }
 
         return await batchContext.HasNextAsync(ct);
     }
+    
+    [LoggerMessage(LogLevel.Error,
+        Message =
+            "Unexpected error while completing produced outbox messages for provider key \"{providerKey}\" and client key \"{clientKey}\"")]
+    private static partial void LogCompletionUnexpectedError(ILogger logger, string providerKey, string clientKey, Exception ex);
 }

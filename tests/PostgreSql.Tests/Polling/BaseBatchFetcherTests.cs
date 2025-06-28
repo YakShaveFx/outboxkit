@@ -4,7 +4,7 @@ using Npgsql;
 using YakShaveFx.OutboxKit.Core.Polling;
 using YakShaveFx.OutboxKit.PostgreSql.Polling;
 using YakShaveFx.OutboxKit.PostgreSql.Shared;
-using static YakShaveFx.OutboxKit.PostgreSql.Tests.Polling.BatchFetcherTestHelpers;
+using static YakShaveFx.OutboxKit.PostgreSql.Tests.Polling.TestHelpers;
 
 namespace YakShaveFx.OutboxKit.PostgreSql.Tests.Polling;
 

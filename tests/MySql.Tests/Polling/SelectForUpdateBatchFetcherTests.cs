@@ -7,7 +7,11 @@ public class SelectForUpdateBatchFetcherTests(MySqlFixture mySqlFixture)
     private readonly BaseBatchFetcherTests _baseTests = new(
         mySqlFixture,
         (pollingSettings, tableCfg, dataSource, timeProvider) =>
-            new SelectForUpdateBatchFetcher(pollingSettings, tableCfg, dataSource, timeProvider));
+            new SelectForUpdateBatchFetcher(
+                pollingSettings,
+                tableCfg,
+                dataSource,
+                new BatchCompleter(pollingSettings, tableCfg, dataSource, timeProvider)));
 
     [Theory]
     [InlineData(CompletionMode.Delete)]

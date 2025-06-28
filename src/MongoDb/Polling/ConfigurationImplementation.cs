@@ -211,9 +211,22 @@ internal sealed class PollingOutboxKitConfigurator : IPollingOutboxKitConfigurat
                         s.GetRequiredKeyedService<Func<OutboxKey, IServiceProvider, IMongoDatabase>>(key)(key, s)));
             }
 
+            services.AddKeyedSingleton(
+                key,
+                (s, _) => ActivatorUtilities.CreateInstance<BatchCompleter<TMessage, TId>>(
+                    s,
+                    key,
+                    pollingSettings,
+                    collectionSettings,
+                    s.GetRequiredKeyedService<Func<OutboxKey, IServiceProvider, IMongoDatabase>>(key)(key, s)));
+            
+            services.AddKeyedSingleton<IBatchCompleteRetrier>(
+                key,
+                (s, _) => s.GetRequiredKeyedService<BatchCompleter<TMessage, TId>>(key));
+            
             services.AddKeyedSingleton<IBatchFetcher>(
                 key,
-                (s, _) => ActivatorUtilities.CreateInstance<OutboxBatchFetcher<TMessage, TId>>(
+                (s, _) => ActivatorUtilities.CreateInstance<BatchFetcher<TMessage, TId>>(
                     s,
                     key,
                     pollingSettings,

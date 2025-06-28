@@ -3,7 +3,7 @@ using YakShaveFx.OutboxKit.MySql.Shared;
 
 namespace YakShaveFx.OutboxKit.MySql.Tests.Polling;
 
-internal static class BatchFetcherTestHelpers
+internal static class TestHelpers
 {
     public record Config(
         DefaultSchemaSettings DefaultSchemaSettings,

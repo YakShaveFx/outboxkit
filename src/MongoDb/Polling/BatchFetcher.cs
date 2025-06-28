@@ -1,4 +1,3 @@
-using System.Linq.Expressions;
 using MongoDB.Driver;
 using YakShaveFx.OutboxKit.Core;
 using YakShaveFx.OutboxKit.Core.Polling;
@@ -7,11 +6,10 @@ using YakShaveFx.OutboxKit.MongoDb.Synchronization;
 namespace YakShaveFx.OutboxKit.MongoDb.Polling;
 
 // ReSharper disable once ClassNeverInstantiated.Global - automagically instantiated by DI
-internal sealed class OutboxBatchFetcher<TMessage, TId> : IBatchFetcher where TMessage : IMessage
+internal sealed class BatchFetcher<TMessage, TId> : IBatchFetcher where TMessage : IMessage
 {
     private readonly IMongoCollection<TMessage> _collection;
     private readonly DistributedLockThingy _lockThingy;
-    private readonly TimeProvider _timeProvider;
 
     private readonly int _batchSize;
     private readonly string _lockId;
@@ -19,26 +17,22 @@ internal sealed class OutboxBatchFetcher<TMessage, TId> : IBatchFetcher where TM
     private readonly string _lockContext;
     private readonly FilterDefinition<TMessage> _findFilter;
     private readonly SortDefinition<TMessage> _sort;
-    private readonly Expression<Func<TMessage, TId>> _idSelector;
-    private readonly Func<IMessage, TId> _idGetter;
-    private readonly Expression<Func<TMessage, DateTime?>>? _processedAtSelector;
-    private readonly Func<IReadOnlyCollection<IMessage>, CancellationToken, Task> _complete;
     private readonly Func<CancellationToken, Task<bool>> _hasNext;
+    private readonly BatchCompleter<TMessage, TId> _completer;
 
-    public OutboxBatchFetcher(
+    public BatchFetcher(
         OutboxKey key,
         MongoDbPollingSettings pollingSettings,
         MongoDbPollingCollectionSettings<TMessage, TId> collectionSettings,
         MongoDbPollingDistributedLockSettings lockSettings,
         IMongoDatabase db,
         DistributedLockThingy lockThingy,
-        TimeProvider timeProvider)
+        BatchCompleter<TMessage, TId> completer)
     {
         _lockId = lockSettings.Id;
         _lockOwner = lockSettings.Owner;
         _lockContext = key.ToString();
         _lockThingy = lockThingy;
-        _timeProvider = timeProvider;
         _batchSize = pollingSettings.BatchSize;
         _findFilter = (pollingSettings.CompletionMode, collectionSettings.ProcessedAtSelector) switch
         {
@@ -48,22 +42,8 @@ internal sealed class OutboxBatchFetcher<TMessage, TId> : IBatchFetcher where TM
             _ => throw new ArgumentException("processed at selector not configured", nameof(collectionSettings))
         };
         _sort = collectionSettings.Sort;
-        _idSelector = collectionSettings.IdSelector;
-        var compiledIdSelector = collectionSettings.IdSelector.Compile();
-        _idGetter = m => compiledIdSelector((TMessage)m);
-        _processedAtSelector = (pollingSettings.CompletionMode, collectionSettings.ProcessedAtSelector) switch
-        {
-            (CompletionMode.Delete, _) => null,
-            (CompletionMode.Update, not null) => collectionSettings.ProcessedAtSelector,
-            _ => throw new ArgumentException("processed at selector not configured", nameof(collectionSettings))
-        };
         _collection = db.GetCollection<TMessage>(collectionSettings.Name);
-        _complete = pollingSettings.CompletionMode switch
-        {
-            CompletionMode.Delete => CompleteDeleteAsync,
-            CompletionMode.Update => CompleteUpdateAsync,
-            _ => throw new ArgumentException("invalid completion mode", nameof(pollingSettings))
-        };
+        _completer = completer;
         _hasNext = HasNextAsync;
     }
 
@@ -82,7 +62,7 @@ internal sealed class OutboxBatchFetcher<TMessage, TId> : IBatchFetcher where TM
 
             if (messages.Count > 0)
             {
-                return new BatchContext(messages, _complete, _hasNext, @lock);
+                return new BatchContext(messages, _completer, _hasNext, @lock);
             }
 
             await @lock.DisposeAsync();
@@ -107,55 +87,18 @@ internal sealed class OutboxBatchFetcher<TMessage, TId> : IBatchFetcher where TM
         return cast;
     }
 
-    private async Task CompleteDeleteAsync(IReadOnlyCollection<IMessage> ok, CancellationToken ct)
-    {
-        if (ok.Count <= 0) return;
-
-        using var session = await _collection.Database.Client.StartSessionAsync(new ClientSessionOptions(), ct);
-        session.StartTransaction();
-        
-        var result = await _collection.DeleteManyAsync(
-            session,
-            Builders<TMessage>.Filter.In(_idSelector, ok.Select(_idGetter)),
-            new DeleteOptions(),
-            ct);
-
-        if (result.DeletedCount != ok.Count) throw new InvalidOperationException("Failed to delete all messages");
-
-        await session.CommitTransactionAsync(ct);
-    }
-
-    private async Task CompleteUpdateAsync(IReadOnlyCollection<IMessage> ok, CancellationToken ct)
-    {
-        if (ok.Count <= 0) return;
-
-        using var session = await _collection.Database.Client.StartSessionAsync(new ClientSessionOptions(), ct);
-        session.StartTransaction();
-
-        var now = _timeProvider.GetUtcNow().DateTime;
-        var result = await _collection.UpdateManyAsync(
-            session,
-            Builders<TMessage>.Filter.In(_idSelector, ok.Select(_idGetter)),
-            Builders<TMessage>.Update.Set(_processedAtSelector, now),
-            new UpdateOptions(),
-            ct);
-
-        if (result.ModifiedCount != ok.Count) throw new InvalidOperationException("Failed to update all messages");
-
-        await session.CommitTransactionAsync(ct);
-    }
-
     private Task<bool> HasNextAsync(CancellationToken ct) => _collection.Find(_findFilter).Limit(1).AnyAsync(ct);
 
     private class BatchContext(
         IReadOnlyCollection<IMessage> messages,
-        Func<IReadOnlyCollection<IMessage>, CancellationToken, Task> complete,
+        BatchCompleter<TMessage, TId> completer,
         Func<CancellationToken, Task<bool>> hasNext,
         IDistributedLock @lock) : IBatchContext
     {
         public IReadOnlyCollection<IMessage> Messages => messages;
 
-        public Task CompleteAsync(IReadOnlyCollection<IMessage> ok, CancellationToken ct) => complete(ok, ct);
+        public Task CompleteAsync(IReadOnlyCollection<IMessage> ok, CancellationToken ct)
+            => completer.CompleteAsync(ok, ct);
 
         public Task<bool> HasNextAsync(CancellationToken ct) => hasNext(ct);
 
