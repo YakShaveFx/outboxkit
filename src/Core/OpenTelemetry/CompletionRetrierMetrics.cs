@@ -8,6 +8,7 @@ internal sealed class CompletionRetrierMetrics : IDisposable
     private readonly Meter _meter;
     private readonly Counter<long> _completionRetryAttemptsCounter;
     private readonly Counter<long> _completionRetriedMessagesCounter;
+    private readonly UpDownCounter<int> _pendingRetryCounter;
     
     public CompletionRetrierMetrics(IMeterFactory meterFactory)
     {
@@ -22,7 +23,11 @@ internal sealed class CompletionRetrierMetrics : IDisposable
             "outbox.completion_retried_messages",
             unit: "{message}",
             description: "The number of messages for which completion was retried");
-            
+        
+        _pendingRetryCounter = _meter.CreateUpDownCounter<int>(
+            "outbox.messages_pending_completion_retry", 
+            unit: "{message}",
+            description: "The number of messages pending completion retry");
     }
     
     public void CompletionRetryAttempted(OutboxKey key, int count)
@@ -45,6 +50,32 @@ internal sealed class CompletionRetrierMetrics : IDisposable
                 { "client_key", key.ClientKey }
             };
             _completionRetriedMessagesCounter.Add(count, tags);
+        }
+    }
+    
+    public void NewMessagesPendingRetry(OutboxKey key, int count)
+    {
+        if (_pendingRetryCounter.Enabled)
+        {
+            var tags = new TagList
+            {
+                { "provider_key", key.ProviderKey },
+                { "client_key", key.ClientKey }
+            };
+            _pendingRetryCounter.Add(count, tags);
+        }
+    }
+    
+    public void MessagesCompleted(OutboxKey key, int count)
+    {
+        if (_pendingRetryCounter.Enabled && count > 0)
+        {
+            var tags = new TagList
+            {
+                { "provider_key", key.ProviderKey },
+                { "client_key", key.ClientKey }
+            };
+            _pendingRetryCounter.Add(-count, tags);
         }
     }
     

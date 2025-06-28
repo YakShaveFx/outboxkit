@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using YakShaveFx.OutboxKit.Core.OpenTelemetry;
 
@@ -53,6 +54,7 @@ internal sealed partial class PollingProducer(
         catch (Exception ex)
         {
             LogCompletionUnexpectedError(logger, key.ProviderKey, key.ClientKey, ex);
+            activity?.SetStatus(ActivityStatusCode.Error);
             completionRetryCollector.Collect(result.Ok);
             
             // return false to break the loop, as we don't want to produce more messages until we're able to complete the batch

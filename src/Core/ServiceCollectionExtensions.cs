@@ -85,7 +85,8 @@ public static class ServiceCollectionExtensions
                     key,
                     s.GetRequiredKeyedService<IBatchCompleteRetrier>(key),
                     s.GetRequiredService<RetrierBuilderFactory>(),
-                    s.GetRequiredService<CompletionRetrierMetrics>()));
+                    s.GetRequiredService<CompletionRetrierMetrics>(),
+                    s.GetRequiredService<ILogger<CompletionRetrier>>()));
             
             services.AddKeyedSingleton<ICompletionRetryCollector>(key,
                 (s, _) => s.GetRequiredKeyedService<CompletionRetrier>(key));
