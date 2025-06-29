@@ -1,21 +1,23 @@
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
+using static YakShaveFx.OutboxKit.Core.OpenTelemetry.MetricsConstants.CleanUpBackgroundService;
+using static YakShaveFx.OutboxKit.Core.OpenTelemetry.MetricsConstants;
 
 namespace YakShaveFx.OutboxKit.Core.OpenTelemetry;
 
-internal sealed class CleanerMetrics : IDisposable
+internal sealed class CleanerBackgroundServiceMetrics : IDisposable
 {
     private readonly Meter _meter;
     private readonly Counter<long> _cleanedMessagesCounter;
 
-    public CleanerMetrics(IMeterFactory meterFactory)
+    public CleanerBackgroundServiceMetrics(IMeterFactory meterFactory)
     {
         _meter = meterFactory.Create(Constants.MeterName);
         
         _cleanedMessagesCounter = _meter.CreateCounter<long>(
-            "outbox.cleaned_messages",
-            unit: "{message}",
-            description: "The number processed outbox messages cleaned");
+            CleanedMessages.Name,
+            CleanedMessages.Unit,
+            CleanedMessages.Description);
     }
     
     public void MessagesCleaned(OutboxKey key, int count)
@@ -24,8 +26,8 @@ internal sealed class CleanerMetrics : IDisposable
         {
             var tags = new TagList
             {
-                { "provider_key", key.ProviderKey },
-                { "client_key", key.ClientKey }
+                { Shared.Tags.ProviderKeyTag, key.ProviderKey },
+                { Shared.Tags.ClientKeyTag, key.ClientKey }
             };
             _cleanedMessagesCounter.Add(count, tags);
         }

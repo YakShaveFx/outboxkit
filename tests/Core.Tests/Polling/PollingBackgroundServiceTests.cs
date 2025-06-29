@@ -2,6 +2,7 @@ using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 using NSubstitute;
+using YakShaveFx.OutboxKit.Core.OpenTelemetry;
 using YakShaveFx.OutboxKit.Core.Polling;
 
 namespace YakShaveFx.OutboxKit.Core.Tests.Polling;
@@ -13,15 +14,15 @@ public class PollingBackgroundServiceTests
     private readonly Listener _listener = new();
     private readonly FakeTimeProvider _timeProvider = new();
     private readonly CorePollingSettings _settings = new();
-    private readonly ICompletionRetrier _completionRetrierStub = new CompleteRetrierStub();
+    private readonly ICompletionRetrier _completionRetrierStub = Substitute.For<ICompletionRetrier>();
+    private readonly PollingBackgroundServiceMetrics _metricsStub = new(OpenTelemetryHelpers.CreateMeterFactoryStub());
     private readonly CancellationToken _ct = TestContext.Current.CancellationToken;
 
     [Fact]
     public async Task WhenServiceStartsTheProducerIsInvoked()
     {
         var producerSpy = Substitute.For<IPollingProducer>();
-        var sut = new PollingBackgroundService(Key, _listener, producerSpy, _timeProvider, _settings,
-            _completionRetrierStub, Logger);
+        var sut = CreateSut(producerSpy);
 
         await sut.StartAsync(CancellationToken.None);
         await Task.Delay(TimeSpan.FromMilliseconds(100), _ct); // give it a bit to run and block
@@ -33,8 +34,7 @@ public class PollingBackgroundServiceTests
     public async Task UntilPollingIntervalIsReachedTheProducerIsNotInvokedAgain()
     {
         var producerSpy = Substitute.For<IPollingProducer>();
-        var sut = new PollingBackgroundService(Key, _listener, producerSpy, _timeProvider, _settings,
-            _completionRetrierStub, Logger);
+        var sut = CreateSut(producerSpy);
 
         await sut.StartAsync(CancellationToken.None);
         await Task.Delay(TimeSpan.FromMilliseconds(100), _ct); // give it a bit to run and block
@@ -50,8 +50,7 @@ public class PollingBackgroundServiceTests
     public async Task WhenPollingIntervalIsReachedThenTheProducerIsInvokedAgain()
     {
         var producerSpy = Substitute.For<IPollingProducer>();
-        var sut = new PollingBackgroundService(Key, _listener, producerSpy, _timeProvider, _settings,
-            _completionRetrierStub, Logger);
+        var sut = CreateSut(producerSpy);
 
         await sut.StartAsync(CancellationToken.None);
         await Task.Delay(TimeSpan.FromMilliseconds(100), _ct); // give it a bit to run and block
@@ -68,8 +67,7 @@ public class PollingBackgroundServiceTests
     public async Task WhenListenerIsTriggeredThenTheProducerIsInvokedAgain()
     {
         var producerSpy = Substitute.For<IPollingProducer>();
-        var sut = new PollingBackgroundService(Key, _listener, producerSpy, _timeProvider, _settings,
-            _completionRetrierStub, Logger);
+        var sut = CreateSut(producerSpy);
 
         await sut.StartAsync(CancellationToken.None);
         await Task.Delay(TimeSpan.FromMilliseconds(100), _ct); // give it a bit to run and block
@@ -85,8 +83,7 @@ public class PollingBackgroundServiceTests
     public async Task WhenCancellationTokenIsSignaledThenTheServiceStops()
     {
         var producerStub = Substitute.For<IPollingProducer>();
-        var sut = new PollingBackgroundService(Key, _listener, producerStub, _timeProvider, _settings,
-            _completionRetrierStub, Logger);
+        var sut = CreateSut(producerStub);
 
         var cts = new CancellationTokenSource();
 
@@ -107,8 +104,7 @@ public class PollingBackgroundServiceTests
             .When(x => x.ProducePendingAsync(Arg.Any<CancellationToken>()))
             .Throw(new InvalidOperationException("test"));
 
-        var sut = new PollingBackgroundService(Key, _listener, producerMock, _timeProvider, _settings,
-            _completionRetrierStub, Logger);
+        var sut = CreateSut(producerMock);
 
         await sut.StartAsync(CancellationToken.None);
         await Task.Delay(TimeSpan.FromMilliseconds(10), CancellationToken.None); // give it a bit to run and block
@@ -119,10 +115,11 @@ public class PollingBackgroundServiceTests
     [Fact]
     public async Task WhenThereAreMessagesToRetryCompletingThenTheRetrierIsInvoked()
     {
-        var producerStub = Substitute.For<IPollingProducer>();
+        var producerMock = Substitute.For<IPollingProducer>();
+        producerMock.ProducePendingAsync(Arg.Any<CancellationToken>())
+            .Returns(ProducePendingResult.CompleteError, ProducePendingResult.Ok);
         var retrierSpy = Substitute.For<ICompletionRetrier>();
-        var sut = new PollingBackgroundService(Key, _listener, producerStub, _timeProvider, _settings,
-            retrierSpy, Logger);
+        var sut = CreateSut(producerMock, completionRetrier: retrierSpy);
 
         await sut.StartAsync(CancellationToken.None);
         await Task.Delay(TimeSpan.FromMilliseconds(100), _ct); // give it a bit to run
@@ -134,28 +131,47 @@ public class PollingBackgroundServiceTests
     public async Task WhenThereAreMessagesToRetryCompletingThenTheProducerIsNotInvokedUntilTheyAreCompleted()
     {
         var retryCompletionSource = new TaskCompletionSource();
-        var producerSpy = Substitute.For<IPollingProducer>();
+        var producerMock = Substitute.For<IPollingProducer>();
+        producerMock.ProducePendingAsync(Arg.Any<CancellationToken>())
+            .Returns(ProducePendingResult.CompleteError, ProducePendingResult.Ok);
         var retrierMock = Substitute.For<ICompletionRetrier>();
-#pragma warning disable CA2012 - mocking, not actually calling the method
+#pragma warning disable CA2012 - it's configuring the mock, not actually invoking the method
         retrierMock.RetryAsync(Arg.Any<CancellationToken>()).Returns(new ValueTask(retryCompletionSource.Task));
 #pragma warning restore CA2012
 
-        var sut = new PollingBackgroundService(Key, _listener, producerSpy, _timeProvider, _settings,
-            retrierMock, Logger);
+        var sut = CreateSut(producerMock, completionRetrier: retrierMock);
 
         await sut.StartAsync(CancellationToken.None);
         await Task.Delay(TimeSpan.FromMilliseconds(100), _ct); // give it a bit to run
-        
-        await retrierMock.Received(1).RetryAsync(Arg.Any<CancellationToken>());
-        await producerSpy.DidNotReceive().ProducePendingAsync(Arg.Any<CancellationToken>());
 
+        // producer is invoked once, before getting the error
+        await producerMock.Received(1).ProducePendingAsync(Arg.Any<CancellationToken>());
+
+        // the error causes the retrier to be invoked
+        await retrierMock.Received(1).RetryAsync(Arg.Any<CancellationToken>());
+
+        await Task.Delay(TimeSpan.FromMilliseconds(100), _ct); // give it a bit to run
+
+        // the producer is not invoked again until the retrier completes
+        await producerMock.Received(1).ProducePendingAsync(Arg.Any<CancellationToken>());
+
+        // completing the retrier will cause the producer to be invoked again
         retryCompletionSource.SetResult();
         await Task.Delay(TimeSpan.FromMilliseconds(100), _ct); // give it a bit to run
-        await producerSpy.Received(1).ProducePendingAsync(Arg.Any<CancellationToken>());
+        await producerMock.Received(2).ProducePendingAsync(Arg.Any<CancellationToken>());
     }
-}
 
-file sealed class CompleteRetrierStub : ICompletionRetrier
-{
-    public ValueTask RetryAsync(CancellationToken ct) => ValueTask.CompletedTask;
+    private PollingBackgroundService CreateSut(
+        IPollingProducer producer,
+        ICompletionRetrier? completionRetrier = null,
+        PollingBackgroundServiceMetrics? metrics = null)
+        => new(
+            Key,
+            _listener,
+            producer,
+            _timeProvider,
+            _settings,
+            completionRetrier ?? _completionRetrierStub,
+            metrics ?? _metricsStub,
+            Logger);
 }

@@ -8,7 +8,6 @@ using OpenTelemetry.Trace;
 using YakShaveFx.OutboxKit.Core;
 using YakShaveFx.OutboxKit.MySql;
 using Dapper;
-using Microsoft.AspNetCore.Mvc;
 using MySqlEndToEndPollingSample.ProducerShared;
 using RabbitMQ.Client;
 using YakShaveFx.OutboxKit.Core.OpenTelemetry;

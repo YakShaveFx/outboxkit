@@ -80,7 +80,7 @@ internal static class ActivityExtensions
 
     private static string ToInvariantString(this Exception exception)
     {
-        var originalUICulture = Thread.CurrentThread.CurrentUICulture;
+        var originalUiCulture = Thread.CurrentThread.CurrentUICulture;
 
         try
         {
@@ -89,7 +89,7 @@ internal static class ActivityExtensions
         }
         finally
         {
-            Thread.CurrentThread.CurrentUICulture = originalUICulture;
+            Thread.CurrentThread.CurrentUICulture = originalUiCulture;
         }
     }
 }
