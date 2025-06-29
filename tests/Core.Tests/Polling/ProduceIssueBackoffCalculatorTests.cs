@@ -49,7 +49,7 @@ public class ProduceIssueBackoffCalculatorTests
     }
     
     [Theory]
-    [InlineData(ProducePendingResult.AllDone)]
+    [InlineData(ProducePendingResult.Ok)]
     [InlineData(ProducePendingResult.CompleteError)]
     internal void WhenCalculatingForUnexpectedResultThenItThrows(ProducePendingResult result)
     {

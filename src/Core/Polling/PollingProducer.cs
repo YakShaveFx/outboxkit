@@ -6,7 +6,7 @@ namespace YakShaveFx.OutboxKit.Core.Polling;
 
 internal enum ProducePendingResult
 {
-    AllDone,
+    Ok,
     FetchError,
     ProduceError,
     PartialProduction,
@@ -24,7 +24,7 @@ internal sealed partial class PollingProducer(
     IBatchFetcher fetcher,
     IBatchProducer producer,
     ICompletionRetryCollector completionRetryCollector,
-    ProducerMetrics metrics,
+    PollingProducerMetrics metrics,
     ILogger<PollingProducer> logger) : IPollingProducer
 {
     private enum ProduceBatchResult
@@ -50,7 +50,7 @@ internal sealed partial class PollingProducer(
                 case ProduceBatchResult.MoreAvailable:
                     continue;
                 case ProduceBatchResult.AllDone:
-                    return ProducePendingResult.AllDone;
+                    return ProducePendingResult.Ok;
                 case ProduceBatchResult.FetchError:
                     return ProducePendingResult.FetchError;
                 case ProduceBatchResult.ProduceError:
@@ -66,7 +66,7 @@ internal sealed partial class PollingProducer(
         }
 
         // if we reach here, it means the cancellation token was triggered
-        return ProducePendingResult.AllDone;
+        return ProducePendingResult.Ok;
     }
 
     // returns true if there is a new batch to produce, false otherwise

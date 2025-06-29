@@ -10,7 +10,7 @@ internal sealed partial class CleanUpBackgroundService(
     IOutboxCleaner cleaner,
     TimeProvider timeProvider,
     CoreCleanUpSettings settings,
-    CleanerMetrics metrics,
+    CleanerBackgroundServiceMetrics metrics,
     ILogger<CleanUpBackgroundService> logger) : BackgroundService
 {
     private readonly TimeSpan _cleanUpInterval = settings.CleanUpInterval;

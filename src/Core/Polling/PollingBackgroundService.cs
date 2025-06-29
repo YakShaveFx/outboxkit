@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using YakShaveFx.OutboxKit.Core.OpenTelemetry;
 
 namespace YakShaveFx.OutboxKit.Core.Polling;
 
@@ -10,6 +11,7 @@ internal sealed partial class PollingBackgroundService(
     TimeProvider timeProvider,
     CorePollingSettings settings,
     ICompletionRetrier completionRetrier,
+    PollingBackgroundServiceMetrics metrics,
     ILogger<PollingBackgroundService> logger) : BackgroundService
 {
     private readonly TimeSpan _pollingInterval = settings.PollingInterval;
@@ -28,9 +30,11 @@ internal sealed partial class PollingBackgroundService(
                 try
                 {
                     var result = await producer.ProducePendingAsync(stoppingToken);
+                    metrics.PollingCycleExecuted(key, result);
+                    
                     switch (result)
                     {
-                        case ProducePendingResult.AllDone:
+                        case ProducePendingResult.Ok:
                             _backoffCalculator.Reset();
                             await WaitBeforeNextIteration(stoppingToken);
                             break;

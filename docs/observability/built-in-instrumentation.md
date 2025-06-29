@@ -28,7 +28,15 @@ Here's an example trace, when producing a batch of messages, which includes the 
 
 ## Metrics
 
-Finally, OutboxKit also exposes some metrics. Metrics exposed include number of batches produced, number of messages produced, and number of processed messages cleaned.
+Finally, OutboxKit also exposes some metrics.
+
+Metrics exposed include:
+
+- number of batches produced
+- number of messages produced
+- number of processed messages cleaned
+- polling cycles and their results
+- produced messages pending completion, the amount of retry attempts and messages retried
 
 Below you can see a sample dashboard, but note that only the final row is from OutboxKit, the others are from other sources.
 

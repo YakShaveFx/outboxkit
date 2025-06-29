@@ -10,7 +10,7 @@ namespace YakShaveFx.OutboxKit.Core.Tests.Polling;
 public class PollingProducerTests
 {
     private static readonly OutboxKey Key = new("sample-provider", "some-key");
-    private static readonly ProducerMetrics Metrics = new(CreateMeterFactoryStub());
+    private static readonly PollingProducerMetrics Metrics = new(CreateMeterFactoryStub());
     private static readonly NullLogger<PollingProducer> Logger = NullLogger<PollingProducer>.Instance;
 
     private static readonly ICompletionRetryCollector CompleteRetryStub = new CompleteRetryRetryCollectorStub();
