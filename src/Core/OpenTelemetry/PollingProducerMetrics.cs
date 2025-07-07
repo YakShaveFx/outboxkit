@@ -1,27 +1,29 @@
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
+using static YakShaveFx.OutboxKit.Core.OpenTelemetry.MetricsConstants.PollingProducer;
+using static YakShaveFx.OutboxKit.Core.OpenTelemetry.MetricsConstants;
 
 namespace YakShaveFx.OutboxKit.Core.OpenTelemetry;
 
-internal sealed class ProducerMetrics : IDisposable
+internal sealed class PollingProducerMetrics : IDisposable
 {
     private readonly Meter _meter;
     private readonly Counter<long> _producedBatchesCounter;
     private readonly Counter<long> _producedMessagesCounter;
 
-    public ProducerMetrics(IMeterFactory meterFactory)
+    public PollingProducerMetrics(IMeterFactory meterFactory)
     {
         _meter = meterFactory.Create(Constants.MeterName);
         
         _producedBatchesCounter = _meter.CreateCounter<long>(
-            "outbox.produced_batches",
-            unit: "{batch}",
-            description: "The number of batches produced");
+            ProducedBatches.Name,
+            ProducedBatches.Unit,
+            ProducedBatches.Description);
         
         _producedMessagesCounter = _meter.CreateCounter<long>(
-            "outbox.produced_messages",
-            unit: "{message}",
-            description: "The number of messages produced");
+            ProducedMessages.Name,
+            ProducedMessages.Unit,
+            ProducedMessages.Description);
     }
     
     public void BatchProduced(OutboxKey key, bool allMessagesProduced)
@@ -30,9 +32,9 @@ internal sealed class ProducerMetrics : IDisposable
         {
             var tags = new TagList
             {
-                { "provider_key", key.ProviderKey },
-                { "client_key", key.ClientKey },
-                { "all_messages_produced", allMessagesProduced }
+                { Shared.Tags.ProviderKeyTag, key.ProviderKey },
+                { Shared.Tags.ClientKeyTag, key.ClientKey },
+                { ProducedBatches.Tags.AllMessagesProduced, allMessagesProduced }
             };
             _producedBatchesCounter.Add(1, tags);
         }
@@ -44,8 +46,8 @@ internal sealed class ProducerMetrics : IDisposable
         {
             var tags = new TagList
             {
-                { "provider_key", key.ProviderKey },
-                { "client_key", key.ClientKey }
+                { Shared.Tags.ProviderKeyTag, key.ProviderKey },
+                { Shared.Tags.ClientKeyTag, key.ClientKey }
             };
             _producedMessagesCounter.Add(count, tags);
         }

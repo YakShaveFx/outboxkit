@@ -13,7 +13,7 @@ public class CleanUpBackgroundServiceTests
     private static readonly NullLogger<CleanUpBackgroundService> Logger = NullLogger<CleanUpBackgroundService>.Instance;
     private readonly FakeTimeProvider _timeProvider = new();
     private readonly CoreCleanUpSettings _settings = new();
-    private readonly CleanerMetrics _metrics = new(CreateMeterFactoryStub());
+    private readonly CleanerBackgroundServiceMetrics _metrics = new(CreateMeterFactoryStub());
     private readonly CancellationToken _ct = TestContext.Current.CancellationToken;
 
     [Fact]

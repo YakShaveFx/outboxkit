@@ -79,9 +79,8 @@ internal sealed partial class CompletionRetrier(
                 }
             },
             ct);
-
-    // logging as warning instead of error, as this is a retry, it's kind of expected that something might be wrong
-    [LoggerMessage(LogLevel.Warning,
+    
+    [LoggerMessage(LogLevel.Error,
         Message =
             "Error while retrying message completion for provider key \"{providerKey}\" and client key \"{clientKey}\"")]
     private static partial void LogRetryFailed(ILogger logger, string providerKey, string clientKey, Exception ex);

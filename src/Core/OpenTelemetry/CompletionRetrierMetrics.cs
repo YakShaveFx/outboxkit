@@ -1,5 +1,7 @@
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
+using static YakShaveFx.OutboxKit.Core.OpenTelemetry.MetricsConstants.CompletionRetrier;
+using static YakShaveFx.OutboxKit.Core.OpenTelemetry.MetricsConstants;
 
 namespace YakShaveFx.OutboxKit.Core.OpenTelemetry;
 
@@ -15,19 +17,19 @@ internal sealed class CompletionRetrierMetrics : IDisposable
         _meter = meterFactory.Create(Constants.MeterName);
         
         _completionRetryAttemptsCounter = _meter.CreateCounter<long>(
-            "outbox.completion_retry_attempts",
-            unit: "{attempt}",
-            description: "The number of attempts to retry completion of produced messages");
+            CompletionRetryAttempts.Name,
+            CompletionRetryAttempts.Unit,
+            CompletionRetryAttempts.Description);
         
         _completionRetriedMessagesCounter = _meter.CreateCounter<long>(
-            "outbox.completion_retried_messages",
-            unit: "{message}",
-            description: "The number of messages for which completion was retried");
+            CompletionRetriedMessages.Name, 
+            CompletionRetriedMessages.Unit, 
+            CompletionRetriedMessages.Description);
         
         _pendingRetryCounter = _meter.CreateUpDownCounter<int>(
-            "outbox.messages_pending_completion_retry", 
-            unit: "{message}",
-            description: "The number of messages pending completion retry");
+            PendingRetry.Name,
+            PendingRetry.Unit,
+            PendingRetry.Description);
     }
     
     public void CompletionRetryAttempted(OutboxKey key, int count)
@@ -36,8 +38,8 @@ internal sealed class CompletionRetrierMetrics : IDisposable
         {
             var tags = new TagList
             {
-                { "provider_key", key.ProviderKey },
-                { "client_key", key.ClientKey }
+                { Shared.Tags.ProviderKeyTag, key.ProviderKey },
+                { Shared.Tags.ClientKeyTag, key.ClientKey }
             };
             _completionRetryAttemptsCounter.Add(1, tags);
         }
@@ -46,8 +48,8 @@ internal sealed class CompletionRetrierMetrics : IDisposable
         {
             var tags = new TagList
             {
-                { "provider_key", key.ProviderKey },
-                { "client_key", key.ClientKey }
+                { Shared.Tags.ProviderKeyTag, key.ProviderKey },
+                { Shared.Tags.ClientKeyTag, key.ClientKey }
             };
             _completionRetriedMessagesCounter.Add(count, tags);
         }
@@ -59,8 +61,8 @@ internal sealed class CompletionRetrierMetrics : IDisposable
         {
             var tags = new TagList
             {
-                { "provider_key", key.ProviderKey },
-                { "client_key", key.ClientKey }
+                { Shared.Tags.ProviderKeyTag, key.ProviderKey },
+                { Shared.Tags.ClientKeyTag, key.ClientKey }
             };
             _pendingRetryCounter.Add(count, tags);
         }
@@ -72,8 +74,8 @@ internal sealed class CompletionRetrierMetrics : IDisposable
         {
             var tags = new TagList
             {
-                { "provider_key", key.ProviderKey },
-                { "client_key", key.ClientKey }
+                { Shared.Tags.ProviderKeyTag, key.ProviderKey },
+                { Shared.Tags.ClientKeyTag, key.ClientKey }
             };
             _pendingRetryCounter.Add(-count, tags);
         }

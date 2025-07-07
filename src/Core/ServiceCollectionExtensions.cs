@@ -38,8 +38,9 @@ public static class ServiceCollectionExtensions
 
     private static void AddOutboxKitPolling(IServiceCollection services, OutboxKitConfigurator configurator)
     {
-        services.AddSingleton<ProducerMetrics>();
+        services.AddSingleton<PollingProducerMetrics>();
         services.AddSingleton<CompletionRetrierMetrics>();
+        services.AddSingleton<PollingBackgroundServiceMetrics>();
         services.AddSingleton<RetrierBuilderFactory>();
 
         if (configurator.PollingConfigurators.Count == 1)
@@ -77,6 +78,7 @@ public static class ServiceCollectionExtensions
                 s.GetRequiredService<TimeProvider>(),
                 corePollingSettings,
                 s.GetRequiredKeyedService<ICompletionRetrier>(key),
+                s.GetRequiredService<PollingBackgroundServiceMetrics>(),
                 s.GetRequiredService<ILogger<PollingBackgroundService>>()));
 
             services.AddKeyedSingleton(
@@ -99,18 +101,18 @@ public static class ServiceCollectionExtensions
                 s.GetRequiredKeyedService<IBatchFetcher>(key),
                 s.GetRequiredService<IBatchProducer>(),
                 s.GetRequiredKeyedService<ICompletionRetryCollector>(key),
-                s.GetRequiredService<ProducerMetrics>(),
+                s.GetRequiredService<PollingProducerMetrics>(),
                 s.GetRequiredService<ILogger<PollingProducer>>()));
             
             if (corePollingSettings.EnableCleanUp)
             {
-                services.TryAddSingleton<CleanerMetrics>();
+                services.TryAddSingleton<CleanerBackgroundServiceMetrics>();
                 services.AddSingleton<IHostedService>(s => new CleanUpBackgroundService(
                     key,
                     s.GetRequiredKeyedService<IOutboxCleaner>(key),
                     s.GetRequiredService<TimeProvider>(),
                     cleanUpSettings,
-                    s.GetRequiredService<CleanerMetrics>(),
+                    s.GetRequiredService<CleanerBackgroundServiceMetrics>(),
                     s.GetRequiredService<ILogger<CleanUpBackgroundService>>()));
             }
 
