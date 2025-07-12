@@ -49,6 +49,10 @@ export default defineConfig({
       },
     ],
     ["link", { rel: "manifest", manifest: "/manifest.json" }],
+    ["meta", { property: "og:image", content: "/banner.webp" }],
+    ["meta", { property: "og:image:alt", content: "OutboxKit - Toolkit to implement the transactional outbox pattern" }],
+    ["meta", { property: "og:image:width", content: "1920" }],
+    ["meta", { property: "og:image:height", content: "1080" }],
   ],
   themeConfig: {
     // https://vitepress.dev/reference/default-theme-config
