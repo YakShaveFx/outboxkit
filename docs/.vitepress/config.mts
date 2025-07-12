@@ -15,10 +15,13 @@ const analyticsHeaders: HeadConfig[] =
       ]
     : [];
 
+const siteTitle = "OutboxKit";
+const siteDescription = "Toolkit to implement the transactional outbox pattern";
+
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
-  title: "OutboxKit",
-  description: "Toolkit to implement the transactional outbox pattern",
+  title: siteTitle,
+  description: siteDescription,
   head: [
     ...analyticsHeaders,
     [
@@ -50,10 +53,16 @@ export default defineConfig({
     ],
     ["link", { rel: "manifest", manifest: "/manifest.json" }],
     ["meta", { property: "og:image", content: "/banner.webp" }],
-    ["meta", { property: "og:image:alt", content: "OutboxKit - Toolkit to implement the transactional outbox pattern" }],
+    [
+      "meta",
+      {
+        property: "og:image:alt",
+        content:
+          "OutboxKit - Toolkit to implement the transactional outbox pattern",
+      },
+    ],
     ["meta", { property: "og:image:width", content: "1920" }],
-    ["meta", { property: "og:image:height", content: "1080" }],
-    ["meta", { property: "og:description", content: "Toolkit to implement the transactional outbox pattern" }],
+    ["meta", { property: "og:image:height", content: "1080" }]
   ],
   themeConfig: {
     // https://vitepress.dev/reference/default-theme-config
@@ -69,7 +78,10 @@ export default defineConfig({
         items: [
           { text: "Quickstart", link: "/intro/quickstart" },
           { text: "What is OutboxKit?", link: "/intro/what-is-outboxkit" },
-          { text: "Transactional outbox pattern", link: "/intro/transactional-outbox-pattern" },
+          {
+            text: "Transactional outbox pattern",
+            link: "/intro/transactional-outbox-pattern",
+          },
           { text: "Concepts", link: "/intro/concepts" },
         ],
       },
@@ -79,7 +91,10 @@ export default defineConfig({
         items: [
           { text: "Core overview", link: "/core/overview" },
           { text: "Producing messages", link: "/core/producing-messages" },
-          { text: "Polling trigger optimization", link: "/core/polling-trigger-optimization" },
+          {
+            text: "Polling trigger optimization",
+            link: "/core/polling-trigger-optimization",
+          },
         ],
       },
       {
@@ -94,7 +109,10 @@ export default defineConfig({
         text: "PostgreSQL",
         collapsed: true,
         items: [
-          { text: "PostgreSQL provider overview", link: "/postgresql/overview" },
+          {
+            text: "PostgreSQL provider overview",
+            link: "/postgresql/overview",
+          },
           { text: "Polling", link: "/postgresql/polling" },
         ],
       },
@@ -111,17 +129,23 @@ export default defineConfig({
         collapsed: true,
         items: [
           { text: "Observability overview", link: "/observability/overview" },
-          { text: "Built-in instrumentation", link: "/observability/built-in-instrumentation" },
-          { text: "Helpers", link: "/observability/helpers" }
+          {
+            text: "Built-in instrumentation",
+            link: "/observability/built-in-instrumentation",
+          },
+          { text: "Helpers", link: "/observability/helpers" },
         ],
       },
       {
         text: "Building a provider",
         collapsed: true,
         items: [
-          { text: "Building a provider overview", link: "/building-a-provider/overview" },
+          {
+            text: "Building a provider overview",
+            link: "/building-a-provider/overview",
+          },
           { text: "Polling", link: "/building-a-provider/polling" },
-          { text: "Push", link: "/building-a-provider/push" }
+          { text: "Push", link: "/building-a-provider/push" },
         ],
       },
     ],
@@ -147,5 +171,38 @@ export default defineConfig({
   sitemap: {
     hostname: "https://outboxkit.yakshavefx.dev",
     lastmodDateOnly: false,
+  },
+  transformPageData(pageData) {
+    pageData.frontmatter.head ??= [];
+    pageData.frontmatter.head.push([
+      "meta",
+      {
+        name: "og:title",
+        content:
+          pageData.frontmatter.layout === "home"
+            ? siteTitle
+            : `${pageData.title} | ${siteTitle}`,
+      },
+    ]);
+
+    const pageDescription =
+      pageData.frontmatter.layout === "home"
+        ? siteDescription
+        : pageData.frontmatter.description || pageData.description;
+
+    if (!!pageDescription) {
+      pageData.frontmatter.head.push([
+        "meta",
+        {
+          name: "og:description",
+          content:
+            pageData.frontmatter.layout === "home"
+              ? siteDescription
+              : pageData.frontmatter.description || pageData.description,
+        },
+      ]);
+    }
+
+    return pageData;
   },
 });
