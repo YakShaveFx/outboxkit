@@ -5,7 +5,7 @@
     "docs:preview": "vitepress preview docs"
   },
   "devDependencies": {
-    "vitepress": "^1.6.3"
+    "vitepress": "^1.6.4"
   },
   "optionalDependencies": {
     "@rollup/rollup-linux-x64-gnu": "^4.43.0"
