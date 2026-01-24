@@ -24,4 +24,7 @@ jobs:
             10.0.x
 
       - name: Build & Test
-        run: ./build/build.sh --target=BuildAndTest
+        uses: cake-build/cake-action@v3
+        with:
+          file-path: build/CakeRunner.cs
+          target: BuildAndTest

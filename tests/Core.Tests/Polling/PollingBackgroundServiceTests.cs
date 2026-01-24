@@ -135,7 +135,8 @@ public class PollingBackgroundServiceTests
         producerMock.ProducePendingAsync(Arg.Any<CancellationToken>())
             .Returns(ProducePendingResult.CompleteError, ProducePendingResult.Ok);
         var retrierMock = Substitute.For<ICompletionRetrier>();
-#pragma warning disable CA2012 - it's configuring the mock, not actually invoking the method
+// it's configuring the mock, not actually invoking the method
+#pragma warning disable CA2012
         retrierMock.RetryAsync(Arg.Any<CancellationToken>()).Returns(new ValueTask(retryCompletionSource.Task));
 #pragma warning restore CA2012
 
