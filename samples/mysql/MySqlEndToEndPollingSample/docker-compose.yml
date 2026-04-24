@@ -152,6 +152,9 @@ services:
       - "3000:3000" # ui
       - "4317:4317" # otlp gRPC
       - "4318:4318" # otlp HTTP
+    volumes:
+      - ./grafana-dashboard.json:/otel-lgtm/grafana/conf/provisioning/dashboards/custom/outboxkit.json:ro
+      - ./grafana-provisioning.yaml:/otel-lgtm/grafana/conf/provisioning/dashboards/custom.yaml:ro
     deploy:
       resources:
         reservations:
