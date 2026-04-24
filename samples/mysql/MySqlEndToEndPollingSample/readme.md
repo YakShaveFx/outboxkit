@@ -16,9 +16,9 @@ ENABLE_OUT_OF_PROCESS_PRODUCER=false docker compose up -d --build
 ENABLE_OUT_OF_PROCESS_PRODUCER=true docker compose up -d --build
 ```
 
-Open Grafana (`http://localhost:3000`) and create a new dashboard, importing the file `grafana-dashboard.json` from this folder.
+Open Grafana (`http://localhost:3000`), navigate to Dashboards, then check out the "OutboxKit Sample" dashboard, to view the metrics.
 
-Open RabbitMQ management UI, at `http://localhost:15672` (user:pass = guest:guest), to check has messages are sent.
+Open RabbitMQ management UI, at `http://localhost:15672` (user:pass = guest:guest), to check as messages are sent.
 
 Hammer the API using k6:
 
