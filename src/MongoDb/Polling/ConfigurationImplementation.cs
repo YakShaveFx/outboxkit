@@ -72,7 +72,7 @@ internal sealed class PollingOutboxKitConfigurator : IPollingOutboxKitConfigurat
     private CorePollingSettings _coreSettings = new();
     private MongoDbPollingSettings _pollingSettings = new();
     private MongoDbCleanUpSettings _cleanUpSettings = new();
-    private DistributedLockSettings _lockBaseSettings = new() 
+    private DistributedLockSettings _lockBaseSettings = new()
     {
         ChangeStreamsEnabled = false
     };
@@ -215,15 +215,14 @@ internal sealed class PollingOutboxKitConfigurator : IPollingOutboxKitConfigurat
                 key,
                 (s, _) => ActivatorUtilities.CreateInstance<BatchCompleter<TMessage, TId>>(
                     s,
-                    key,
                     pollingSettings,
                     collectionSettings,
                     s.GetRequiredKeyedService<Func<OutboxKey, IServiceProvider, IMongoDatabase>>(key)(key, s)));
-            
+
             services.AddKeyedSingleton<IBatchCompleteRetrier>(
                 key,
                 (s, _) => s.GetRequiredKeyedService<BatchCompleter<TMessage, TId>>(key));
-            
+
             services.AddKeyedSingleton<IBatchFetcher>(
                 key,
                 (s, _) => ActivatorUtilities.CreateInstance<BatchFetcher<TMessage, TId>>(
@@ -233,7 +232,8 @@ internal sealed class PollingOutboxKitConfigurator : IPollingOutboxKitConfigurat
                     collectionSettings,
                     lockPollingSettings,
                     s.GetRequiredKeyedService<Func<OutboxKey, IServiceProvider, IMongoDatabase>>(key)(key, s),
-                    s.GetRequiredKeyedService<DistributedLockThingy>(key)));
+                    s.GetRequiredKeyedService<DistributedLockThingy>(key),
+                    s.GetRequiredKeyedService<BatchCompleter<TMessage, TId>>(key)));
         }
     }
 }
