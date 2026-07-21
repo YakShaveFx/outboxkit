@@ -6,6 +6,7 @@ const string artifactsPath = "./artifacts/";
 
 var target = Argument("target", "BuildAndTest");
 var configuration = Argument("configuration", "Release");
+var packageBuildTimestamp = DateTime.UtcNow.ToString("yyyyMMddHHmmss");
 
 //////////////////////////////////////////////////////////////////////
 // TASKS
@@ -65,7 +66,8 @@ Task("Package")
                     NoRestore = true,
                     NoBuild = true,
                     IncludeSymbols = true,
-                    SymbolPackageFormat = "snupkg"
+                    SymbolPackageFormat = "snupkg",
+                    ArgumentCustomization = args => args.Append($"/p:PackageBuildTimestamp={packageBuildTimestamp}")
                 });
         }
     });
