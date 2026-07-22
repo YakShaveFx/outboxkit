@@ -52,6 +52,12 @@ internal sealed partial class CleanUpBackgroundService(
                 }
 
                 await Task.Delay(_cleanUpInterval, timeProvider, stoppingToken);
+                
+                LogWakeUp(
+                    logger,
+                    key.ProviderKey,
+                    key.ClientKey,
+                    stoppingToken.IsCancellationRequested ? "service stopping" : "polling interval elapsed");
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -73,6 +79,11 @@ internal sealed partial class CleanUpBackgroundService(
         Message =
             "Shutting down outbox clean up service for provider key \"{providerKey}\" and client key \"{clientKey}\"")]
     private static partial void LogStopping(ILogger logger, string providerKey, string clientKey);
+    
+    [LoggerMessage(LogLevel.Debug,
+        Message =
+            "Waking up outbox clean up service for provider key \"{providerKey}\" and client key \"{clientKey}\", due to \"{reason}\"")]
+    private static partial void LogWakeUp(ILogger logger, string providerKey, string clientKey, string reason);
 
     [LoggerMessage(LogLevel.Error,
         Message =

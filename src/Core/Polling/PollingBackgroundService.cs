@@ -101,7 +101,12 @@ internal sealed partial class PollingBackgroundService(
             logger,
             key.ProviderKey,
             key.ClientKey,
-            listenerTask.IsCompleted ? "listener triggered" : "polling interval elapsed");
+            (listenerTask, ct) switch
+            {
+                (_,  {IsCancellationRequested: true}) => "service stopping",
+                ({IsCompleted: true}, _) => "listener triggered",
+                _ => "polling interval elapsed"
+            });
 
         await linkedTokenSource.CancelAsync();
     }
