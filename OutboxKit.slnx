@@ -1,0 +1,40 @@
+<Solution>
+    <Configurations>
+        <Platform Name="Any CPU"/>
+        <Platform Name="x64"/>
+        <Platform Name="x86"/>
+    </Configurations>
+    <Folder Name="/build/"/>
+    <Folder Name="/samples/"/>
+    <Folder Name="/samples/mongodb/">
+        <Project Path="samples/mongodb/MongoDbMultiDbPollingSample/MongoDbMultiDbPollingSample.csproj"/>
+        <Project Path="samples/mongodb/MongoDbPollingSample/MongoDbPollingSample.csproj"/>
+    </Folder>
+    <Folder Name="/samples/mysql/">
+        <Project Path="samples/mysql/MySqlEfMultiDbPollingSample/MySqlEfMultiDbPollingSample.csproj"/>
+        <Project Path="samples/mysql/MySqlEfPollingSample/MySqlEfPollingSample.csproj"/>
+    </Folder>
+    <Folder Name="/samples/mysql/MySqlEndToEndPollingSample/">
+        <Project Path="samples/mysql/MySqlEndToEndPollingSample/Consumer/Consumer.csproj"/>
+        <Project Path="samples/mysql/MySqlEndToEndPollingSample/OutOfProcessProducer/OutOfProcessProducer.csproj"/>
+        <Project Path="samples/mysql/MySqlEndToEndPollingSample/Producer/Producer.csproj"/>
+        <Project Path="samples/mysql/MySqlEndToEndPollingSample/ProducerShared/ProducerShared.csproj"/>
+    </Folder>
+    <Folder Name="/samples/postgresql/">
+        <Project Path="samples/postgresql/PostgreSqlEfMultiDbPollingSample/PostgreSqlEfMultiDbPollingSample.csproj"/>
+        <Project Path="samples/postgresql/PostgreSqlEfPollingSample/PostgreSqlEfPollingSample.csproj"/>
+    </Folder>
+    <Folder Name="/src/">
+        <Project Path="src/Core.OpenTelemetry/Core.OpenTelemetry.csproj"/>
+        <Project Path="src/Core/Core.csproj"/>
+        <Project Path="src/MongoDb/MongoDb.csproj"/>
+        <Project Path="src/MySql/MySql.csproj"/>
+        <Project Path="src/PostgreSql/PostgreSql.csproj"/>
+    </Folder>
+    <Folder Name="/tests/">
+        <Project Path="tests/Core.Tests/Core.Tests.csproj"/>
+        <Project Path="tests/MongoDb.Tests/MongoDb.Tests.csproj"/>
+        <Project Path="tests/MySql.Tests/MySql.Tests.csproj"/>
+        <Project Path="tests/PostgreSql.Tests/PostgreSql.Tests.csproj"/>
+    </Folder>
+</Solution>

@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging.Testing;
 using Microsoft.Extensions.Time.Testing;
 using MongoDB.Driver;
 using YakShaveFx.OutboxKit.MongoDb.Synchronization;
@@ -9,6 +10,7 @@ namespace YakShaveFx.OutboxKit.MongoDb.Tests.Synchronization;
 public class DistributedLockThingyTests(MongoDbFixture fixture)
 {
     private readonly ILogger<DistributedLockThingy> _logger = NullLogger<DistributedLockThingy>.Instance;
+    private readonly ILoggerFactory _loggerFactory = new NullLoggerFactory();
     private readonly string _databaseName = $"test_{Guid.NewGuid():N}";
     private readonly CancellationToken _ct = TestContext.Current.CancellationToken;
 
@@ -18,7 +20,7 @@ public class DistributedLockThingyTests(MongoDbFixture fixture)
         var database = GetDatabase();
         var settings = new DistributedLockSettings { ChangeStreamsEnabled = false };
         var timeProvider = new FakeTimeProvider();
-        var sut = new DistributedLockThingy(settings, database, timeProvider, _logger);
+        var sut = new DistributedLockThingy(settings, database, timeProvider, GetChangeStreamListener(), _logger);
         var lockDef = CreateLockDefinition();
 
         await using var @lock = await sut.AcquireAsync(lockDef, _ct);
@@ -36,8 +38,8 @@ public class DistributedLockThingyTests(MongoDbFixture fixture)
         // so we can control time separately and test expiration
         var sut1TimeProvider = new FakeTimeProvider();
         var sut2TimeProvider = new FakeTimeProvider();
-        var sut1 = new DistributedLockThingy(settings, GetDatabase(), sut1TimeProvider, _logger);
-        var sut2 = new DistributedLockThingy(settings, GetDatabase(), sut2TimeProvider, _logger);
+        var sut1 = new DistributedLockThingy(settings, GetDatabase(), sut1TimeProvider, GetChangeStreamListener(), _logger);
+        var sut2 = new DistributedLockThingy(settings, GetDatabase(), sut2TimeProvider, GetChangeStreamListener(), _logger);
         var lockDef = CreateLockDefinition();
 
         // acquire first lock
@@ -63,8 +65,8 @@ public class DistributedLockThingyTests(MongoDbFixture fixture)
     {
         var settings = new DistributedLockSettings { ChangeStreamsEnabled = true };
         var timeProvider = new FakeTimeProvider();
-        var sut1 = new DistributedLockThingy(settings, GetDatabase(), timeProvider, _logger);
-        var sut2 = new DistributedLockThingy(settings, GetDatabase(), timeProvider, _logger);
+        var sut1 = new DistributedLockThingy(settings, GetDatabase(), timeProvider, GetChangeStreamListener(), _logger);
+        var sut2 = new DistributedLockThingy(settings, GetDatabase(), timeProvider, GetChangeStreamListener(), _logger);
         var lockDef = CreateLockDefinition();
         var acquireLock1Tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var releaseLock1Tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -100,8 +102,8 @@ public class DistributedLockThingyTests(MongoDbFixture fixture)
     {
         var settings = new DistributedLockSettings { ChangeStreamsEnabled = false };
         var timeProvider = new FakeTimeProvider();
-        var sut1 = new DistributedLockThingy(settings, GetDatabase(), timeProvider, _logger);
-        var sut2 = new DistributedLockThingy(settings, GetDatabase(), timeProvider, _logger);
+        var sut1 = new DistributedLockThingy(settings, GetDatabase(), timeProvider, GetChangeStreamListener(), _logger);
+        var sut2 = new DistributedLockThingy(settings, GetDatabase(), timeProvider, GetChangeStreamListener(), _logger);
         var lockDef = CreateLockDefinition();
 
         // acquire first lock
@@ -130,7 +132,7 @@ public class DistributedLockThingyTests(MongoDbFixture fixture)
         var acquiredLocks = await Task.WhenAll(
             attempts.Select(def =>
             {
-                var sut = new DistributedLockThingy(settings, GetDatabase(), timeProvider, _logger);
+                var sut = new DistributedLockThingy(settings, GetDatabase(), timeProvider, GetChangeStreamListener(), _logger);    
                 return sut.TryAcquireAsync(def, _ct);
             }));
 
@@ -144,8 +146,8 @@ public class DistributedLockThingyTests(MongoDbFixture fixture)
         // so we can control time separately and test expiration
         var sut1TimeProvider = new FakeTimeProvider();
         var sut2TimeProvider = new FakeTimeProvider();
-        var sut1 = new DistributedLockThingy(settings, GetDatabase(), sut1TimeProvider, _logger);
-        var sut2 = new DistributedLockThingy(settings, GetDatabase(), sut2TimeProvider, _logger);
+        var sut1 = new DistributedLockThingy(settings, GetDatabase(), sut1TimeProvider, GetChangeStreamListener(), _logger);   
+        var sut2 = new DistributedLockThingy(settings, GetDatabase(), sut2TimeProvider, GetChangeStreamListener(), _logger);
         var lockLostCalled = false;
         var lockDef = CreateLockDefinition() with
         {
@@ -181,7 +183,7 @@ public class DistributedLockThingyTests(MongoDbFixture fixture)
     {
         var settings = new DistributedLockSettings { ChangeStreamsEnabled = true };
         var timeProvider = new FakeTimeProvider();
-        var sut = new DistributedLockThingy(settings, GetDatabase(), timeProvider, _logger);
+        var sut = new DistributedLockThingy(settings, GetDatabase(), timeProvider, GetChangeStreamListener(), _logger);
         var lockLostTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var lock1AcquiredTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var lockDef = CreateLockDefinition() with
@@ -216,7 +218,7 @@ public class DistributedLockThingyTests(MongoDbFixture fixture)
     {
         var settings = new DistributedLockSettings { ChangeStreamsEnabled = true };
         var timeProvider = new FakeTimeProvider();
-        var sut = new DistributedLockThingy(settings, GetDatabase(), timeProvider, _logger);
+        var sut = new DistributedLockThingy(settings, GetDatabase(), timeProvider, GetChangeStreamListener(), _logger);
         var lockLostCalled = false;
         var lockDef = CreateLockDefinition() with
         {
@@ -258,7 +260,7 @@ public class DistributedLockThingyTests(MongoDbFixture fixture)
         var database = GetDatabase();
         var settings = new DistributedLockSettings { ChangeStreamsEnabled = false };
         var timeProvider = TimeProvider.System;
-        var sut = new DistributedLockThingy(settings, database, timeProvider, _logger);
+        var sut = new DistributedLockThingy(settings, database, timeProvider, GetChangeStreamListener(), _logger);
         var lockDef = CreateLockDefinition() with { Duration = TimeSpan.FromSeconds(1) };
 
         var @lock = await sut.AcquireAsync(lockDef, _ct);
@@ -277,7 +279,12 @@ public class DistributedLockThingyTests(MongoDbFixture fixture)
         var database = GetDatabase();
         var settings = new DistributedLockSettings { ChangeStreamsEnabled = true };
         var timeProvider = new FakeTimeProvider();
-        var sut = new DistributedLockThingy(settings, database, timeProvider, _logger);
+        var sut = new DistributedLockThingy(
+            settings,
+            database, 
+            timeProvider,
+            new ChangeStreamListener(_loggerFactory.CreateLogger<ChangeStreamListener>()),
+            _logger);
         var lockDef = CreateLockDefinition();
 
         var @lock = await sut.AcquireAsync(lockDef, _ct);
@@ -292,7 +299,31 @@ public class DistributedLockThingyTests(MongoDbFixture fixture)
         doc.Should().BeNull();
     }
 
-    // need to delete using a different client, otherwise it won't trigger change streams
+    [Fact]
+    public async Task WhenKeepAliveRenewsLockWithChangeStreamsThenPotentiallyLostIsNotLogged()
+    {
+        var settings = new DistributedLockSettings { ChangeStreamsEnabled = true };
+        var fakeLogCollector = new FakeLogCollector();
+        var fakeLogger = new FakeLogger<ChangeStreamListener>(fakeLogCollector);
+        var sut = new DistributedLockThingy(
+            settings,
+            GetDatabase(),
+            TimeProvider.System,
+            new ChangeStreamListener(fakeLogger),
+            _logger);
+        var lockDef = CreateLockDefinition() with { Duration = TimeSpan.FromSeconds(2) };
+
+        await using var @lock = await sut.AcquireAsync(lockDef, _ct);
+
+        // let keepalive fire a few times (self-replace events hit change stream)
+        await Task.Delay(TimeSpan.FromSeconds(5), _ct);
+
+        fakeLogCollector
+            .GetSnapshot()
+            .Should()
+            .NotContain(r => r.Message.Contains("potentially lost"));
+    }
+    
     private async Task<DeleteResult> DeleteLock(DistributedLockDefinition lockDef)
         => await GetDatabase()
             .GetCollection()
@@ -332,6 +363,8 @@ public class DistributedLockThingyTests(MongoDbFixture fixture)
 
     private IMongoDatabase GetDatabase()
         => new MongoClient(fixture.ConnectionString).GetDatabase(_databaseName);
+    
+    private ChangeStreamListener GetChangeStreamListener() => new (_loggerFactory.CreateLogger<ChangeStreamListener>());
 }
 
 file static class Extensions

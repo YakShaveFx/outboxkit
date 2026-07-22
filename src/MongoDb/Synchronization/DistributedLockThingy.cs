@@ -7,6 +7,7 @@ internal sealed partial class DistributedLockThingy(
     DistributedLockSettings settings,
     IMongoDatabase database,
     TimeProvider timeProvider,
+    ChangeStreamListener changeStreamListener,
     ILogger<DistributedLockThingy> logger)
 {
     private readonly IMongoCollection<DistributedLockDocument> _collection =
@@ -28,7 +29,7 @@ internal sealed partial class DistributedLockThingy(
         }
         catch (Exception)
         {
-            await internalLockDefinition.ChangeStreamListener.TryDisposeAsync();
+            await internalLockDefinition.ChangeStreamNotifier.TryDisposeAsync();
             throw;
         }
     }
@@ -42,7 +43,7 @@ internal sealed partial class DistributedLockThingy(
         {
             if (!await InnerTryAcquireAsync(internalLockDefinition, ct))
             {
-                await internalLockDefinition.ChangeStreamListener.TryDisposeAsync();
+                await internalLockDefinition.ChangeStreamNotifier.TryDisposeAsync();
                 return null;
             }
 
@@ -52,7 +53,7 @@ internal sealed partial class DistributedLockThingy(
         }
         catch (Exception)
         {
-            await internalLockDefinition.ChangeStreamListener.TryDisposeAsync();
+            await internalLockDefinition.ChangeStreamNotifier.TryDisposeAsync();
             throw;
         }
     }
@@ -61,14 +62,14 @@ internal sealed partial class DistributedLockThingy(
         DistributedLockDefinition lockDefinition,
         CancellationToken ct)
     {
-        var changeStreamListener = _changeStreamsEnabled
-            ? await ChangeStreamListener.StartAsync(_collection, lockDefinition, ct)
+        var changeStreamNotifier = _changeStreamsEnabled
+            ? await changeStreamListener.ListenAsync(_collection, lockDefinition, ct)
             : null;
 
         return new InternalDistributedLockDefinition
         {
             Definition = lockDefinition,
-            ChangeStreamListener = changeStreamListener
+            ChangeStreamNotifier = changeStreamNotifier
         };
     }
 
@@ -182,7 +183,7 @@ internal sealed partial class DistributedLockThingy(
         while (!ct.IsCancellationRequested)
         {
             // listener is not null when change streams are enabled
-            await lockDefinition.ChangeStreamListener!.WaitAsync();
+            await lockDefinition.ChangeStreamNotifier!.OnChangeAsync(ct);
             if (await InnerTryAcquireAsync(lockDefinition, ct)) return;
         }
     }
@@ -227,9 +228,11 @@ internal sealed partial class DistributedLockThingy(
                         try
                         {
                             var delayTask = Task.Delay(keepAliveInterval, timeProvider, linkedTokenSource.Token);
-
+                            
                             // listener is not null when change streams are enabled
-                            await Task.WhenAny(delayTask, lockDefinition.ChangeStreamListener!.WaitAsync());
+                            watchLockLossTask = lockDefinition.ChangeStreamNotifier!.OnChangeAsync(linkedTokenSource.Token);
+                            
+                            await Task.WhenAny(delayTask, watchLockLossTask);
                             
                             if (!delayTask.IsCompleted)
                             {
@@ -333,6 +336,13 @@ internal sealed partial class DistributedLockThingy(
         CancellationTokenSource keepAliveCts,
         Func<InternalDistributedLockDefinition, CancellationTokenSource, ValueTask> releaseLock) : IDistributedLock
     {
-        public ValueTask DisposeAsync() => releaseLock(definition, keepAliveCts);
+        public async ValueTask DisposeAsync()
+        {
+            await releaseLock(definition, keepAliveCts);
+            if (definition.ChangeStreamNotifier is not null)
+            {
+                await definition.ChangeStreamNotifier.DisposeAsync();
+            }
+        }
     }
 }

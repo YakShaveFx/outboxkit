@@ -5,7 +5,7 @@ namespace YakShaveFx.OutboxKit.MongoDb.Synchronization;
 internal sealed class InternalDistributedLockDefinition
 {
     public required DistributedLockDefinition Definition { get; init; }
-    public required ChangeStreamListener? ChangeStreamListener { get; init; }
+    public required IChangeStreamNotifier? ChangeStreamNotifier { get; init; }
 
     public string Id => Definition.Id;
     public string Owner => Definition.Owner;

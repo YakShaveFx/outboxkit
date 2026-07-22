@@ -1,6 +1,6 @@
 #:sdk Cake.Sdk
 
-const string solutionPath = "./OutboxKit.sln";
+const string solutionPath = "./OutboxKit.slnx";
 const string librariesPath = "./src/";
 const string artifactsPath = "./artifacts/";
 
