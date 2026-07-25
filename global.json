@@ -4,6 +4,6 @@
     "rollForward": "latestFeature"
   },
   "msbuild-sdks": {
-    "Cake.Sdk": "6.1.1"
+    "Cake.Sdk": "6.2.0"
   }
 }

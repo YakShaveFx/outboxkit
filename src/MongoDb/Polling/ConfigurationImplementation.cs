@@ -161,12 +161,15 @@ internal sealed class PollingOutboxKitConfigurator : IPollingOutboxKitConfigurat
 
         services.AddKeyedSingleton(key, _dbFactory);
 
+        services.AddKeyedSingleton<ChangeStreamListener>(key);
+        
         services.AddKeyedSingleton<DistributedLockThingy>(
             key,
             (s, _) => ActivatorUtilities.CreateInstance<DistributedLockThingy>(
                 s,
                 _lockBaseSettings,
-                s.GetRequiredKeyedService<Func<OutboxKey, IServiceProvider, IMongoDatabase>>(key)(key, s)));
+                s.GetRequiredKeyedService<Func<OutboxKey, IServiceProvider, IMongoDatabase>>(key)(key, s),
+                s.GetRequiredKeyedService<ChangeStreamListener>(key)));
 
         _collectionConfigurator.ConfigureMe(new GetMongoDbOutboxCollectionConfigured(
             key,
