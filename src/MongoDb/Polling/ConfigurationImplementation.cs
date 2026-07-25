@@ -13,7 +13,7 @@ namespace YakShaveFx.OutboxKit.MongoDb.Polling;
 internal interface IGetMongoDbOutboxCollectionConfigured
 {
     void ConfigureCollection<TMessage, TId>(MongoDbPollingCollectionSettings<TMessage, TId> collectionSettings)
-        where TMessage : IMessage;
+        where TMessage : class, IMessage;
 }
 
 internal interface IMongoDbOutboxCollectionConfigurator
@@ -24,7 +24,7 @@ internal interface IMongoDbOutboxCollectionConfigurator
 internal sealed class MongoDbOutboxCollectionConfigurator<TMessage, TId>(
     MongoDbPollingCollectionSettings<TMessage, TId>? defaults)
     : IMongoDbOutboxCollectionConfigurator, IMongoDbOutboxCollectionConfigurator<TMessage, TId>
-    where TMessage : IMessage
+    where TMessage : class, IMessage
 {
     private MongoDbPollingCollectionSettings<TMessage, TId> _settings = defaults ?? new();
 
@@ -89,7 +89,7 @@ internal sealed class PollingOutboxKitConfigurator : IPollingOutboxKitConfigurat
     }
 
     public IMongoDbPollingOutboxKitConfigurator WithCollection<TMessage, TId>(
-        Action<IMongoDbOutboxCollectionConfigurator<TMessage, TId>> configure) where TMessage : IMessage
+        Action<IMongoDbOutboxCollectionConfigurator<TMessage, TId>> configure) where TMessage : class, IMessage
     {
         ArgumentNullException.ThrowIfNull(configure);
         var configurator = new MongoDbOutboxCollectionConfigurator<TMessage, TId>(null);
@@ -189,7 +189,7 @@ internal sealed class PollingOutboxKitConfigurator : IPollingOutboxKitConfigurat
     {
         public void ConfigureCollection<TMessage, TId>(
             MongoDbPollingCollectionSettings<TMessage, TId> collectionSettings)
-            where TMessage : IMessage
+            where TMessage : class, IMessage
         {
             if (string.IsNullOrWhiteSpace(collectionSettings.Name))
                 throw new InvalidOperationException("Collection name must be set");
@@ -321,7 +321,7 @@ internal sealed record MongoDbPollingSettings
     public CompletionMode CompletionMode { get; init; } = CompletionMode.Delete;
 }
 
-internal sealed record MongoDbPollingCollectionSettings<TMessage, TId> where TMessage : IMessage
+internal sealed record MongoDbPollingCollectionSettings<TMessage, TId> where TMessage : class, IMessage
 {
     public string Name { get; init; } = "outbox_messages";
     public Expression<Func<TMessage, TId>> IdSelector { get; init; } = null!;

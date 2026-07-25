@@ -5,7 +5,7 @@ using YakShaveFx.OutboxKit.Core.Polling;
 
 namespace YakShaveFx.OutboxKit.MongoDb.Polling;
 
-internal sealed class BatchCompleter<TMessage, TId> : IBatchCompleteRetrier where TMessage : IMessage
+internal sealed class BatchCompleter<TMessage, TId> : IBatchCompleteRetrier where TMessage : class, IMessage
 {
     private readonly IMongoCollection<TMessage> _collection;
     private readonly TimeProvider _timeProvider;
