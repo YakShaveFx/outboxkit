@@ -127,6 +127,10 @@ internal sealed partial class DistributedLockThingy(
         {
             return false;
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            return false;
+        }
         catch (Exception ex)
         {
             LogErrorAcquiringLock(logger, ex, lockDefinition.Id, lockDefinition.Context);
