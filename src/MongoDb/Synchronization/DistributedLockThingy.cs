@@ -43,6 +43,7 @@ internal sealed partial class DistributedLockThingy(
         {
             if (!await InnerTryAcquireAsync(internalLockDefinition, ct))
             {
+                LogTryAcquireNotSuccessful(logger, lockDefinition.Id, lockDefinition.Context);
                 await internalLockDefinition.ChangeStreamNotifier.TryDisposeAsync();
                 return null;
             }
@@ -300,6 +301,8 @@ internal sealed partial class DistributedLockThingy(
     [LoggerMessage(LogLevel.Debug, Message = "Lock acquired (id \"{Id}\" context \"{Context}\")")]
     private static partial void LogAcquired(ILogger logger, string id, string? context);
 
+    [LoggerMessage(LogLevel.Debug, Message = "Lock try acquire did not succeed, another instance is holding it (id \"{Id}\" context \"{Context}\")")]
+    private static partial void LogTryAcquireNotSuccessful(ILogger logger, string id, string? context);
 
     [LoggerMessage(LogLevel.Warning,
         Message = "An error occurred while acquiring lock (id \"{Id}\" context \"{Context}\")")]
