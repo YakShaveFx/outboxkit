@@ -61,7 +61,7 @@ public interface IMongoDbPollingOutboxKitConfigurator
     /// <returns>The <see cref="IMongoDbPollingOutboxKitConfigurator"/> instance for chaining calls.</returns>
     IMongoDbPollingOutboxKitConfigurator WithCollection<TMessage, TId>(
         Action<IMongoDbOutboxCollectionConfigurator<TMessage, TId>> configure)
-        where TMessage : IMessage;
+        where TMessage : class, IMessage;
 
     /// <summary>
     /// Configures the outbox polling interval.
@@ -99,7 +99,7 @@ public interface IMongoDbPollingOutboxKitConfigurator
 /// </summary>
 /// <typeparam name="TMessage">The type of the message in the outbox.</typeparam>
 /// <typeparam name="TId">The type of the id of the message in the outbox.</typeparam>
-public interface IMongoDbOutboxCollectionConfigurator<TMessage, TId> where TMessage : IMessage
+public interface IMongoDbOutboxCollectionConfigurator<TMessage, TId> where TMessage : class, IMessage
 {
     /// <summary>
     /// Configures the name of the outbox collection.

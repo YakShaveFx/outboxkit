@@ -8,7 +8,7 @@ internal sealed record MongoDbCleanUpSettings
     public TimeSpan MaxAge { get; init; } = TimeSpan.FromDays(1);
 }
 
-internal sealed record MongoDbCleanUpCollectionSettings<TMessage> where TMessage : IMessage
+internal sealed record MongoDbCleanUpCollectionSettings<TMessage> where TMessage : class, IMessage
 {
     public required string Name { get; init; } 
     public required Expression<Func<TMessage, DateTime?>> ProcessedAtSelector { get; init; }

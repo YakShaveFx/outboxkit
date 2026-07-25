@@ -6,7 +6,7 @@ using YakShaveFx.OutboxKit.MongoDb.Synchronization;
 namespace YakShaveFx.OutboxKit.MongoDb.Polling;
 
 // ReSharper disable once ClassNeverInstantiated.Global - automagically instantiated by DI
-internal sealed class BatchFetcher<TMessage, TId> : IBatchFetcher where TMessage : IMessage
+internal sealed class BatchFetcher<TMessage, TId> : IBatchFetcher where TMessage : class, IMessage
 {
     private readonly IMongoCollection<TMessage> _collection;
     private readonly DistributedLockThingy _lockThingy;
@@ -77,14 +77,13 @@ internal sealed class BatchFetcher<TMessage, TId> : IBatchFetcher where TMessage
 
     private async Task<IReadOnlyCollection<IMessage>> FetchMessagesAsync(CancellationToken ct)
     {
-        var messages = await _collection.Find(_findFilter).Sort(_sort).Limit(_batchSize).ToListAsync(ct);
-        var cast = new IMessage[messages.Count];
-        for (var i = 0; i < messages.Count; i++)
+        var messages = new List<TMessage>(_batchSize);
+        using var cursor = await _collection.Find(_findFilter).Sort(_sort).Limit(_batchSize).ToCursorAsync(ct);
+        while (await cursor.MoveNextAsync(ct))
         {
-            cast[i] = messages[i];
+            messages.AddRange(cursor.Current);
         }
-
-        return cast;
+        return messages;
     }
 
     private Task<bool> HasNextAsync(CancellationToken ct) => _collection.Find(_findFilter).Limit(1).AnyAsync(ct);

@@ -9,7 +9,7 @@ internal sealed class Cleaner<TMessage>(
     MongoDbCleanUpSettings settings,
     MongoDbCleanUpCollectionSettings<TMessage> collectionSettings,
     IMongoDatabase db,
-    TimeProvider timeProvider) : IOutboxCleaner where TMessage : IMessage
+    TimeProvider timeProvider) : IOutboxCleaner where TMessage : class, IMessage
 {
     private readonly IMongoCollection<TMessage> _collection = db.GetCollection<TMessage>(collectionSettings.Name);
 
